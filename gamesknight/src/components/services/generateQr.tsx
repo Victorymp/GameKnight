@@ -1,5 +1,13 @@
-﻿export default function getGameQr(): string {
-  return "/tempqr.png";
+﻿import { getGameQrCode } from "../../api/api-controller";
+
+export default async function getGameQr(gameId: string): Promise<string> {
+  // verify game id is 36 
+  if (gameId.length == 32) {
+    const gameqr = await getGameQrCode(gameId)
+    return "/tempqr.png"
+  } else {
+    throw new Error(`Failed to fetch`)
+  }
 }
 
 export async function imageToBase64(imageUrl: string): Promise<string> {

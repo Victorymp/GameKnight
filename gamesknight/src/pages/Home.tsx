@@ -3,7 +3,8 @@ import { Card } from "../components/ui/Card"
 import { Menu, Search } from "lucide-react";
 import { Button } from "../components/ui/Button";
 
-import getGameQr, { imageToBase64 } from "../components/services/generateQr";
+import gameController from "../components/gamemanager/game-controller";
+
 import { useState } from "react";
 
 export default function Home() {
@@ -12,16 +13,21 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
-  async function getGameCodes() {
+  async function createGame() {
     setError(undefined);
     setIsLoading(true);
-
     try {
-      const gameQrPath = getGameQr();
-      const base64 = await imageToBase64(gameQrPath);
-      setGameCodeQr(base64);
+      const created = await gameController.createGame();
+      const b64 = created?.gameQrB64;
+      if (b64 && typeof b64 === "string") {
+        const src = b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
+        setGameCodeQr(src);
+      } else {
+        setGameCodeQr(undefined);
+        setError("No QR available for this game.");
+      }
     } catch (err) {
-      setError("Unable to load QR image.");
+      setError("Failed to create game.");
       setGameCodeQr(undefined);
     } finally {
       setIsLoading(false);
@@ -59,7 +65,7 @@ export default function Home() {
 
         <Card>
           <Button
-            onClick={() => getGameCodes() }
+            onClick={() => createGame() }
           >
             Start Game
           </Button>
