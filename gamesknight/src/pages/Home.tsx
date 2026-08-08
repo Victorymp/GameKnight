@@ -3,7 +3,30 @@ import { Card } from "../components/ui/Card"
 import { Menu, Search } from "lucide-react";
 import { Button } from "../components/ui/Button";
 
+import getGameQr, { imageToBase64 } from "../components/services/generateQr";
+import { useState } from "react";
+
 export default function Home() {
+
+  const [gameCodeQr, setGameCodeQr] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+
+  async function getGameCodes() {
+    setError(undefined);
+    setIsLoading(true);
+
+    try {
+      const gameQrPath = getGameQr();
+      const base64 = await imageToBase64(gameQrPath);
+      setGameCodeQr(base64);
+    } catch (err) {
+      setError("Unable to load QR image.");
+      setGameCodeQr(undefined);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-primary-light text-text">
@@ -32,18 +55,37 @@ export default function Home() {
       </header>
 
       {/* Testing the multiplayer connection */}
-      <div className="flex flex-1 gap-2 py-3 px-3 max-h-[180px]">
+      <div className="flex flex-1 gap-2 py-3 px-3">
 
-        <Card
-          
-        
-        >
-          <div className="flex">
-            
-          </div>
-
+        <Card>
+          <Button
+            onClick={() => getGameCodes() }
+          >
+            Start Game
+          </Button>
         </Card>
-        
+      </div>
+      <div className="flex flex-1 gap-2 py-3 px-3">
+        <Card>
+          {isLoading ? (
+              <div>
+                <span>Loading QR...</span>
+              </div>
+            ) : error ? (
+              <div>
+                <span>{error}</span>
+              </div>
+            ) : gameCodeQr ? (
+              <div>
+                <img src={gameCodeQr} alt="Game QR" />
+                <span>Has code</span>
+              </div>
+            ) : (
+              <div>
+                <span>No code</span>
+              </div>
+            )}
+        </Card>
       </div>
     </div>
   )

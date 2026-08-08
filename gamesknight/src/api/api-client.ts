@@ -3,7 +3,7 @@ import axios from "axios";
 import { msalInstance } from "../auth/hooks/auth-provider";
 
 const API_URL = import.meta.env.VITE_API_URL;
-const API_SCOPE = import.meta.env.VITE_SY_USERS_SCOPE
+const API_SCOPE = import.meta.env.VITE_USERS_SCOPE
 
 const apiClient = axios.create({
   baseURL: API_URL,
