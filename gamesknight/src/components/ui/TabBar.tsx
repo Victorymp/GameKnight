@@ -35,7 +35,7 @@ export function TabBar({ tabs, activeKey, onSelect, className, actions }: TabBar
     <div
       role="tablist"
       className={cn(
-        "flex items-center min-h-[48px] gap-2 px-3 rounded-xl border border-gray-200 bg-white shadow-sm shrink-0 overflow-hidden",
+        "flex items-center min-h-12 gap-2 px-3 rounded-xl border border-gray-200 bg-white shadow-sm shrink-0 overflow-hidden",
         className,
       )}
     >
