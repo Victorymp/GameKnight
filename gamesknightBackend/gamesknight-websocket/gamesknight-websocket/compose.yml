@@ -1,0 +1,10 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      - 'MYSQL_DATABASE=${DB_URL}'
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      
+    ports:
+      - '127.0.0.1:3306:3306'
