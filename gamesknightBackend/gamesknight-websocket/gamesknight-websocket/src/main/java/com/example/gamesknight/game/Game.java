@@ -1,14 +1,19 @@
 package com.example.gamesknight.game;
 
 import io.nayuki.qrcodegen.QrCode;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 
+@Entity
 public class Game {
 	
+	@Id
+	private Long id;
 	private String gameCode;
 	private String gameQrB64;
 	private static Game instance; 
@@ -36,7 +41,8 @@ public class Game {
 	
 	public Game createGame(String gameCode) {
 		this.gameCode = gameCode;
-		String gameUrl = "http://localhost:5173/game/" + this.gameCode;
+//		String gameUrl = "http://localhost:5173/player/join/" + this.gameCode;
+		String gameUrl = "http://192.168.1.220:5173/player/join/" + this.gameCode;
 		try {
 			this.gameQrB64 = this.generateQrcode(gameUrl);
 		} catch (Exception e) {
@@ -89,6 +95,14 @@ public class Game {
 
 	    return Base64.getEncoder()
 	            .encodeToString(outputStream.toByteArray());
+	}
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
 	}
 
 }

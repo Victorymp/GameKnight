@@ -34,11 +34,15 @@ apiClient.interceptors.request.use(async (config) => {
 export default apiClient;
 
 // --- STOMP WebSocket helper ---
+
+
 let stompClient: Client | null = null;
 let wsListeners: Set<(data: any) => void> = new Set();
 let reconnectTimer: number | null = null;
 let reconnectAttempts = 0;
 let currentPath = "/ws";
+let connectPromise: Promise<void> | null = null;
+let connectResolvers: Array<() => void> = [];
 
 function getWsBase(): string {
   if (API_URL) {
@@ -47,12 +51,20 @@ function getWsBase(): string {
   return window.location.origin.replace(/^http/, "ws");
 }
 
-export function connectWebSocket(path = "/ws") {
+export function connectWebSocket(path = "/ws"): Promise<void> {
   currentPath = path;
 
-  if (stompClient && stompClient.active) {
-    return stompClient;
+  if (stompClient && stompClient.connected) {
+    return Promise.resolve();
   }
+
+  if (connectPromise) {
+    return connectPromise;
+  }
+
+  connectPromise = new Promise((resolve) => {
+    connectResolvers.push(resolve);
+  });
 
   const brokerURL = `${getWsBase()}${path}`;
   stompClient = new Client({
@@ -75,6 +87,9 @@ export function connectWebSocket(path = "/ws") {
         wsListeners.forEach((handler) => handler(payload));
       });
 
+      connectResolvers.forEach((resolve) => resolve());
+      connectResolvers = [];
+
       console.log("Connected to STOMP broker:", brokerURL);
     },
     onStompError: (frame) => {
@@ -86,12 +101,13 @@ export function connectWebSocket(path = "/ws") {
   });
 
   stompClient.activate();
-  return stompClient;
+  return connectPromise;
 }
 
 function scheduleReconnect(path = currentPath) {
   if (reconnectTimer) return;
 
+  connectPromise = null; // allow a fresh connect() to be awaited after reconnect
   reconnectAttempts += 1;
   const delay = Math.min(30000, 1000 * Math.pow(2, Math.min(reconnectAttempts, 6)));
 
@@ -111,7 +127,7 @@ export function onWsMessage(cb: (data: any) => void) {
 }
 
 export function sendWsMessage(msg: any) {
-  if (!stompClient || !stompClient.active) {
+  if (!stompClient || !stompClient.connected) {   // ← fixed: check .connected, not .active
     throw new Error("WebSocket is not open");
   }
 

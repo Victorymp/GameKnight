@@ -2,6 +2,10 @@ import apiClient from "./api-client";
 import { connectWebSocket, onWsMessage, sendWsMessage } from "./api-client";
 import { type GameData, type GameQr, type UserData } from "../models/model";
 
+interface CreateGameRequest {
+  gameCode: string;
+}
+
 let queue: Promise<unknown> = Promise.resolve();
 
 function enqueue<T>(fn: () => Promise<T>): Promise<T> {
@@ -10,10 +14,10 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
   return result;
 }
 
-export const createGame = (gameCode?: string): Promise<GameData> =>
+export const createGame = (gameCode: string): Promise<GameData> =>
   enqueue(() =>
     apiClient
-      .post(`/Game/creategame`, { gameCode })
+      .post<GameData>(`/Game/creategame`, { gameCode }satisfies CreateGameRequest)
       .then((r) => r.data)
   );
 

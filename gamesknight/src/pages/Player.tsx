@@ -5,6 +5,9 @@ import { Header, Screen } from "../components/ui/Screen";
 import { Input } from "../components/ui/Input";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import type { GameData } from "../models/model";
+import { PlayerJoined } from "../components/players/PlayerJoined";
+import { PlayerJoining } from "../components/players/PlayerJoining";
 
 
 export default function Player(){
@@ -24,13 +27,11 @@ export default function Player(){
     <>
       <Screen className="grid grid-cols-1 gap-1">
         <Header/>
-        <div>
-          <Card className="flex flex-1">
-            <h3>Enter the game code</h3>
-            <Input></Input>
-            <Button>Enter</Button>
-          </Card>
-        </div>
+        {gameId == "" ? (
+          <PlayerJoining/>
+        ) : (
+          <PlayerJoined/>
+        )}
       </Screen>
     </>
 

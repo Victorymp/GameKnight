@@ -14,7 +14,7 @@ export interface GameData extends GameQr{
 }
 
 export interface Player{
-  name: string;
+  displayName: string;
   id: string;
 }
 
