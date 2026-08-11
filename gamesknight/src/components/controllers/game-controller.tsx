@@ -57,29 +57,89 @@ class GameController {
     this.wsInitialized = true;
 
     this.connectionReady = connectGameSocket(path).then(() => {
-      onGameSocketMessage((msg) => {
-        if (msg && msg.type === "game:update" && msg.payload) {
-          this.gameData = msg.payload as GameData;
-          if ((msg.payload as GameData & { players?: Player[] }).players) {
-            playerController.setPlayers((msg.payload as unknown as { players: Player[] }).players);
-          }
-        }
-      });
+      onGameSocketMessage((msg) => this.handleSocketMessage(msg));
     });
 
     return this.connectionReady;
   }
 
+  private handleSocketMessage(msg: any): void {
+    console.debug("GameController socket message:", msg);
+    if (!msg) return;
+
+    if (typeof msg === "string") {
+      try {
+        msg = JSON.parse(msg);
+      } catch {
+        return;
+      }
+    }
+
+    const payload = msg.payload ?? msg;
+
+    if (msg.type === "game:update") {
+      console.log("New Player");
+      this.gameData = payload as GameData;
+      const players = (payload as GameData & { players?: Player[] }).players;
+      if (players) {
+        playerController.setPlayers(players);
+      }
+      return;
+    }
+
+    if (msg.type === "player:joined" && payload) {
+      const player = (payload as Player) ?? null;
+      if (player?.id && player?.displayName) {
+        playerController.addPlayer(player);
+      }
+      return;
+    }
+
+    if (payload?.players && Array.isArray(payload.players)) {
+      playerController.setPlayers(payload.players as Player[]);
+      if (typeof payload.gameCode === "string") {
+        this.gameData = { ...(this.gameData ?? {}), ...payload } as GameData;
+      }
+      return;
+    }
+
+    if (Array.isArray(msg.players)) {
+      playerController.setPlayers(msg.players as Player[]);
+      return;
+    }
+  }
+
   async joinGame(gameCode: string,{id, displayName}:PlayerJoinProp): Promise<GameData | undefined> {
-    await this.initSocket();   // ← now waits for real connection before sending
-    console.log(id);
-    this.send({ type: "game:join", payload: { gameCode } });
+    console.log("GameController.joinGame()", { gameCode, id, displayName });
+    const player = { id, displayName };
+    playerController.addPlayer(player);
+
+    if (this.gameData) {
+      const currentPlayers = (this.gameData as GameData & { players?: Player[] }).players ?? [];
+      this.gameData = {
+        ...this.gameData,
+        players: currentPlayers.some((p) => p.id === id)
+          ? currentPlayers.map((p) => (p.id === id ? player : p))
+          : [...currentPlayers, player],
+      } as GameData;
+    }
+
+    await this.initSocket();
+    console.log("Socket initialized for join");
+    try {
+      const joinPayload = { type: "game:join", payload: { gameCode, id, displayName } };
+      console.log("Sending join event", joinPayload);
+      this.send(joinPayload);
+    } catch (err) {
+      console.warn("Could not send join event", err);
+    }
 
     return this.gameData;
   }
 
 
   send(message: any) {
+    console.log("GameController.send()", message);
     sendGameSocketMessage(message);
   }
 

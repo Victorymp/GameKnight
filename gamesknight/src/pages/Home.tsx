@@ -12,9 +12,10 @@ export default function Home() {
   const [gameCode, setGameCode] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [players, setPlayers] = useState<Player[]>(playerController.getPlayers());
 
   useEffect(() => {
+    setPlayers(playerController.getPlayers());
     const unsubscribe = playerController.subscribe(setPlayers);
     return unsubscribe;
   }, []);

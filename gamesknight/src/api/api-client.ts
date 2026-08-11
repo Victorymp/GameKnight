@@ -127,12 +127,25 @@ export function onWsMessage(cb: (data: any) => void) {
 }
 
 export function sendWsMessage(msg: any) {
+  console.log("sendWsMessage() called", {
+    connected: !!stompClient?.connected,
+    active: !!stompClient?.active,
+    msg,
+  });
+
   if (!stompClient || !stompClient.connected) {   // ← fixed: check .connected, not .active
     throw new Error("WebSocket is not open");
   }
 
-  stompClient.publish({
-    destination: "/app/game",
-    body: typeof msg === "string" ? msg : JSON.stringify(msg),
-  });
+  try {
+    const body = typeof msg === "string" ? msg : JSON.stringify(msg);
+    console.log("Publishing STOMP message", { destination: "/app/game", body });
+    stompClient.publish({
+      destination: "/app/game",
+      body,
+    });
+  } catch (err) {
+    console.error("Failed to publish STOMP message", err);
+    throw err;
+  }
 }
