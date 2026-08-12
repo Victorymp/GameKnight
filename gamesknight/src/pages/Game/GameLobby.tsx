@@ -1,13 +1,17 @@
-import { Card } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
-import { Header, Screen } from "../components/ui/Screen";
-import gameController from "../components/controllers/game-controller";
-import playerController from "../components/controllers/player-controller";
-import type { Player } from "../models/model";
 import { useEffect, useState } from "react";
-import SideBar from "../components/ui/SideBar";
+import { type GameData, type Player } from "../../models/model";
+import { Screen, Header } from "../../components/ui/Screen";
+import { Card } from "../../components/ui/Card";
+import { Button } from "../../components/ui/Button";
+import gameController from "../../components/controllers/game-controller";
+import playerController from "../../components/controllers/player-controller";
+import SideBar from "../../components/ui/SideBar";
+import { getGameData } from "../../api/api-controller";
+import { useParams } from "react-router-dom";
 
-export default function Home() {
+export default function GameLobby() {
+  const { gameId } = useParams<{ gameId: string }>();
+  const [game, setGame] = useState<GameData | null>(null);
   const [gameCodeQr, setGameCodeQr] = useState<string | undefined>();
   const [gameCodeInput, setGameCodeInput] = useState<string>("");
   const [gameCode, setGameCode] = useState<string>();
@@ -20,6 +24,16 @@ export default function Home() {
     const unsubscribe = playerController.subscribe(setPlayers);
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!gameId) return;
+
+    getGameData(gameId)
+      .then((data) => setGame(data))
+      .catch((error) => {
+        console.error("Failed to load game data", error);
+      });
+  }, [gameId]);
 
   async function createGame() {
     if (!gameCodeInput) {
@@ -100,5 +114,6 @@ export default function Home() {
         </main>
       </div>
     </Screen>
-  )
+  );
 }
+

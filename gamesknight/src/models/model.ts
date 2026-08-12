@@ -10,7 +10,8 @@ export interface GameQr{
 
 export interface GameData extends GameQr{
   // Game id is th Id of the running game
-  gameId?: string;
+  id: number;
+  questions: Question[];
 }
 
 export interface Player{
@@ -18,3 +19,16 @@ export interface Player{
   id: string;
 }
 
+
+export interface Answer {
+  id: string;
+  text: string;
+  correct: boolean;
+}
+
+export interface Question {
+  id: string;
+  text: string;
+  imagePreview?: string; // base64 data URL for preview/storage
+  answers: Answer[];
+}

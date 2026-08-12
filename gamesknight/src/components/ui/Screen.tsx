@@ -33,7 +33,11 @@ export function Header({ className, ...props}:ScreenProps){
       {/* Top Bar */}
       <header className="grid grid-cols-3 items-center justify-between bg-page text-black px-5 py-2.5 min-h-13 shrink-0">
         <div className="flex items-center gap-2">
-          <Menu size={14}/>
+          <Button
+          variant="outline"
+          >
+            <Menu size={14}/>
+          </Button>
           <h1 className="text-xl font-semibold">Games Knight</h1>
         </div>
         <div className="justify-self-center">

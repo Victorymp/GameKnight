@@ -1,10 +1,10 @@
 import { type GameData, type Player } from "../../models/model";
 import {
-  createGame as apiCreateGame,
   connectGameSocket,
   onGameSocketMessage,
   sendGameSocketMessage,
-} from "../../api/api-controller";
+} from "../../websocket/websocket-controller";
+import {createGame as apiCreateGame } from "../../api/api-controller";
 import playerController from "./player-controller";
 
 interface PlayerJoinProp{
