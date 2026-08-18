@@ -3,7 +3,7 @@ import Home from './pages/Home'
 import Game from './pages/Game/Game'
 import GameMake from './pages/Game/GameMake'
 import { BrowserRouter, Routes, Route } from "react-router-dom"
-import { PlayerJoining } from './components/players/PlayerJoining'
+import { PlayerJoining } from './pages/Player/PlayerJoining'
 import GamePlay from './pages/Game/GamePlay'
 import PlayerVotePage from './pages/Player/PlayerVotePage'
 import GameLobby from './pages/Game/GameLobby'

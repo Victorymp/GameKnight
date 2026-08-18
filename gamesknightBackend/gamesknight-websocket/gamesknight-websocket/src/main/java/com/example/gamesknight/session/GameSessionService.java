@@ -36,14 +36,20 @@ public class GameSessionService {
         return sessions.computeIfAbsent(gameCode, code -> {
             Game g = gameRepository.findByGameCodeWithQuestions(code)
                     .orElseThrow(() -> new IllegalStateException("Unknown game: " + code));
-            
-            // Hydrates answers on the same managed Question instances above
+
+            // Force answer hydration
             questionRepository.findByGameCodeWithAnswers(code);
-            
+
+            // Force initialization of each answer collection so it survives the closed session
+            for (Question q : g.getQuestions()) {
+                org.hibernate.Hibernate.initialize(q.getAnswers());
+                // Or equivalently: q.getAnswers().size();  — but Hibernate.initialize is clearer intent
+            }
+
             return new GameSession(g);
         });
     }
-
+    @Transactional
     public void playerJoin(String gameCode, String playerId, String name) {
         GameSession s = getOrCreate(gameCode);
         s.lock().lock();
@@ -52,7 +58,7 @@ public class GameSessionService {
             broadcast(gameCode, "player:list", Map.of("players", playerListPayload(s)));
         } finally { s.lock().unlock(); }
     }
-
+    @Transactional
     public void startGame(String gameCode) {
         GameSession s = getOrCreate(gameCode);
         s.lock().lock();
@@ -61,7 +67,7 @@ public class GameSessionService {
             advanceToQuestion(s, 0);
         } finally { s.lock().unlock(); }
     }
-
+    @Transactional
     public void submitVote(String gameCode, String playerId, long questionId, long answerId) {
         GameSession s = sessions.get(gameCode);
         if (s == null) return;
@@ -121,14 +127,18 @@ public class GameSessionService {
         Question q = s.getCurrentQuestion();
         if (q == null) { enterEnded(s); return; }
 
-        Map<String, Object> questionView = Map.of(
-                "id", q.getId(),
-                "text", q.getText(),
-                "imageData", q.getImageData(),
-                "answers", q.getAnswers().stream()
-                        .map(a -> Map.of("id", a.getId(), "text", a.getText()))
-                        .toList()
-        );
+        Map<String, Object> questionView = new java.util.HashMap<>();
+        questionView.put("id", q.getId());
+        questionView.put("text", q.getText());
+        questionView.put("imageData", q.getImageData());   // null-safe now
+        questionView.put("answers", q.getAnswers().stream()
+                .map(a -> {
+                    Map<String, Object> answerMap = new java.util.HashMap<>();
+                    answerMap.put("id", a.getId());
+                    answerMap.put("text", a.getText());
+                    return answerMap;
+                })
+                .toList());
 
         broadcast(s.getGameCode(), "question:show", Map.of(
                 "questionIndex", index,

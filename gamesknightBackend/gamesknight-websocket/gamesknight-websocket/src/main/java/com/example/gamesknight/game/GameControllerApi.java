@@ -94,6 +94,18 @@ public class GameControllerApi {
         return ResponseEntity.ok(newGame);
     }
     
+    @PostMapping("/game")
+    ResponseEntity<Game> getGame(@RequestBody GameRequest request) {
+	    logger.info("Gettinf game with code: {}", request.getGameCode());
+	    String gameCode = request.getGameCode();
+	    Game chosenGame = gameService.getGame(gameCode);
+
+	    logger.info("Game found successfully with code: {}", chosenGame.getGameCode());
+	    logger.info("Game: {}",chosenGame.toString());
+	    return ResponseEntity
+	    		.status(HttpStatus.OK)
+	    		.body(chosenGame);
+    }
     
     ResponseEntity<String> generateqr(@RequestBody GameRequest request) {
     	logger.info("Creating game code with code: {}", request.getGameCode());

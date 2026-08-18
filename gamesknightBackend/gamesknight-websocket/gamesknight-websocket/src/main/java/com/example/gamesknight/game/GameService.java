@@ -48,6 +48,19 @@ public class GameService {
 			e.printStackTrace();
 			return null;
 		}
-    	
     }
+    
+    @Transactional
+    public Game getGame(String gameCode) {
+		Game game = new Game();
+		try {
+			game = gameRepository.findByGameCode(gameCode)
+			        .orElseThrow(() -> new NotFoundException());
+			return game;
+		} catch (NotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+	}
+}
 }

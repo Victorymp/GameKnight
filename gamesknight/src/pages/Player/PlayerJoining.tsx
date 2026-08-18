@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Button } from "../ui/Button";
-import { Card } from "../ui/Card";
-import { Input } from "../ui/Input";
-import { Screen, Header } from "../ui/Screen";
-import gameController from "../controllers/game-controller";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { Input } from "../../components/ui/Input";
+import { Screen, Header } from "../../components/ui/Screen";
+import gameController from "../../components/controllers/game-controller";
 import { useParams, useNavigate } from "react-router-dom";
 
 export function PlayerJoining() {
@@ -27,6 +27,7 @@ export function PlayerJoining() {
     setError(null);
     setJoining(true);
     try {
+      console.log(`Game Code: ${effectiveGameId}`);
       const { playerId, displayName: confirmedName } =
         await gameController.joinGame(effectiveGameId, trimmedName);
 

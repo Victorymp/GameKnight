@@ -13,7 +13,7 @@ import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
 
 export default function GameLobby() {
   const { gameId } = useParams<{ gameId: string }>();
-  const [game, setGame] = useState<GameData | null>(null);
+  const [, setGame] = useState<GameData | null>(null);
   const [gameCodeQr, setGameCodeQr] = useState<string | undefined>();
   const [gameCode, setGameCode] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
@@ -57,8 +57,11 @@ export default function GameLobby() {
 
   useEffect(() => {
     if (!gameId) return;
-
-    getGameData(gameId)
+    const getGame: Omit<GameData, "id" | "gameQrB64"> = {
+        gameCode: gameId ?? "",
+        questions: [],
+      };
+    getGameData(getGame)
       .then((data) => setGame(data))
       .catch((error) => {
         console.error("Failed to load game data", error);
@@ -107,11 +110,6 @@ export default function GameLobby() {
       return;
     }
     setError(undefined);
-
-    gameController.send({
-      destination: `/app/game/${gameCode}/start`,
-      body: {},
-    });
     
     navigate(`/game/${gameCode}/host`);
   }

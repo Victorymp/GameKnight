@@ -167,10 +167,9 @@ class GameController {
     });
   }
 
-
-  send(message: any) {
+  send(message: { destination: string; body: unknown }) {
     console.log("GameController.send()", message);
-    sendGameSocketMessage("/topic/game",message);
+    sendGameSocketMessage(message.destination, message.body);
   }
 
   addPlayer(player: Player) {

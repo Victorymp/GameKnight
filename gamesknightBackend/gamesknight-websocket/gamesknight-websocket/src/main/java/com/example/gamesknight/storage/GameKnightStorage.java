@@ -15,7 +15,9 @@ import io.github.cdimascio.dotenv.Dotenv;
 public class GameKnightStorage {
 
     private final BlobServiceClient blobServiceClient;
-    private static final Dotenv env = Dotenv.load();
+    private static final Dotenv env = Dotenv.configure()
+    	    .ignoreIfMissing()
+    	    .load();
     private static final String CONNECTION_STRING = env.get("AZURE_STORAGE_CONNECTION_STRING");
     private static final String QR_CONTAINER = env.get("AZURE_STORAGE_QR_CONTAINER");
     private static final String IMAGE_CONTAINER = env.get("AZURE_STORAGE_IMAGE_CONTAINER");

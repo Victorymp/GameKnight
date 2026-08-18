@@ -25,7 +25,9 @@ import java.util.List;
 public class Game {
 	
 	
-	private static final Dotenv env = Dotenv.load();
+	private static final Dotenv env = Dotenv.configure()
+		    .ignoreIfMissing()
+		    .load();
 	private static final String API_URL = env.get("API_URL");
 
     @Id

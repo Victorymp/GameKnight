@@ -3,6 +3,8 @@ import gameController from "../../components/controllers/game-controller";
 import type { Player } from "../../models/model";
 import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
 import playerController from "../../components/controllers/player-controller";
+import { Timer } from "../../components/ui/Timer";
+import { QuestionCard } from "../../components/ui/QuestionCard";
 
 const ANSWER_COLORS = ["bg-red-500", "bg-blue-500", "bg-yellow-500", "bg-green-500"];
 const ANSWER_LETTERS = ["A", "B", "C", "D"];
@@ -24,8 +26,7 @@ export default function GamePlay() {
   const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(null);
   const [phaseStart, setPhaseStart] = useState<number>(0);
   const [phaseDuration, setPhaseDuration] = useState<number>(30_000);
-  const [msLeft, setMsLeft] = useState<number>(30_000);
-  
+  const [msLeft, setMsLeft] = useState<number>(30_000);  
 
   // Local visual timer only — server is source of truth for phase changes
   useEffect(() => {
@@ -173,37 +174,15 @@ export default function GamePlay() {
               <span>Question {questionIndex + 1} of {totalQuestions}</span>
               <span>{voterCount} / {players.length} voted</span>
             </div>
-            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-cyan-400 transition-all duration-100"
-                style={{ width: `${timerPct}%` }}
-              />
-            </div>
+            <Timer msLeft={msLeft} totalMs={phaseDuration} />
           </div>
 
-          <h2 className="text-3xl font-bold text-center my-8">{question.text}</h2>
-
-          <div className="grid grid-cols-2 gap-4 max-w-4xl mx-auto">
-            {question.answers.map((a, i) => {
-              const count = counts[a.id] ?? 0;
-              const isCorrect = phase === "reveal" && a.id === correctAnswerId;
-              const isRevealed = phase === "reveal";
-              return (
-                <div
-                  key={a.id}
-                  className={`${ANSWER_COLORS[i]} rounded-lg p-6 flex flex-col ${
-                    isRevealed && !isCorrect ? "opacity-40" : ""
-                  } ${isCorrect ? "ring-4 ring-white" : ""}`}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-4xl font-black">{ANSWER_LETTERS[i]}</span>
-                    <span className="text-xl">{a.text}</span>
-                  </div>
-                  <div className="text-3xl font-bold text-right mt-auto">{count}</div>
-                </div>
-              );
-            })}
-          </div>
+          <QuestionCard
+            question={question}
+            counts={counts}
+            correctAnswerId={correctAnswerId}
+            revealed={phase === "reveal"}
+          />
         </>
       )}
 

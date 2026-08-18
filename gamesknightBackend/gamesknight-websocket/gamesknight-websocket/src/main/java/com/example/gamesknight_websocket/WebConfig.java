@@ -8,7 +8,9 @@ import io.github.cdimascio.dotenv.Dotenv;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
-    private static final Dotenv env = Dotenv.load();
+    private static final Dotenv env = Dotenv.configure()
+    	    .ignoreIfMissing()
+    	    .load();
     private static final String API_URL = env.get("API_URL");
     @Override
     public void addCorsMappings(CorsRegistry registry) {

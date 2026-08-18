@@ -46,10 +46,10 @@ export const getAllGames = (): Promise<GameData[]> =>
     apiClient(`/game/all`).then((r) => r.data.content ?? r.data)
   );
 
-export const getGameData = (gameId: string): Promise<GameData> =>
+export const getGameData = (newGame: Omit<GameData, "id" | "gameQrB64">): Promise<GameData> =>
   enqueue(() => 
     apiClient
-      .post(`/Game`, {gameId})
+      .post(`/game/game`, newGame)
       .then((r) => r.data)
     );
 
