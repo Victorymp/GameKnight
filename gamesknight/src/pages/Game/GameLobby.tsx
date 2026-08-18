@@ -8,6 +8,8 @@ import playerController from "../../components/controllers/player-controller";
 import SideBar from "../../components/ui/SideBar";
 import { getGameData } from "../../api/api-controller";
 import { useParams, useNavigate } from "react-router-dom";
+import { onGameSocketMessage } from "../../websocket/websocket-controller";
+import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
 
 export default function GameLobby() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -24,6 +26,34 @@ export default function GameLobby() {
     const unsubscribe = playerController.subscribe(setPlayers);
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!gameId) return;
+
+    const off = onGameSocketMessage((msg) => {
+      if (msg?.type === "player:list") {
+        const incoming = (msg.payload?.players ?? []) as Player[];
+        playerController.setPlayers(incoming);
+      }
+    });
+
+    return () => { off?.(); };
+  }, [gameId]);
+
+  useEffect(() => {
+    if (!gameId) return;
+
+    let off: (() => void) | undefined;
+    connectWebSocket().then(() => {
+      off = subscribeToGame(gameId, (msg) => {
+        if (msg?.type === "player:list") {
+          playerController.setPlayers(msg.payload?.players ?? []);
+        }
+      });
+    });
+
+    return () => { off?.(); };
+  }, [gameId]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -68,7 +98,7 @@ export default function GameLobby() {
   }
 
   function beginGame() {
-    if (!game?.gameCode) {
+    if (!gameCode) {
       setError("No game loaded.");
       return;
     }
@@ -79,11 +109,11 @@ export default function GameLobby() {
     setError(undefined);
 
     gameController.send({
-      destination: `/app/game/${game.gameCode}/start`,
+      destination: `/app/game/${gameCode}/start`,
       body: {},
     });
-
-    navigate(`/game/${game.gameCode}/host`);
+    
+    navigate(`/game/${gameCode}/host`);
   }
 
   return (

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import gameController from "../../components/controllers/game-controller";
-import { onGameSocketMessage } from "../../websocket/websocket-controller";
-import type { Question, Answer } from "../../models/model";
+import type { Player } from "../../models/model";
+import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
+import playerController from "../../components/controllers/player-controller";
 
 const ANSWER_COLORS = ["bg-red-500", "bg-blue-500", "bg-yellow-500", "bg-green-500"];
 const ANSWER_LETTERS = ["A", "B", "C", "D"];
@@ -9,7 +10,7 @@ const ANSWER_LETTERS = ["A", "B", "C", "D"];
 type Phase = "lobby" | "question" | "reveal" | "ended";
 type AnswerView = { id: number; text: string };
 type QuestionView = { id: number; text: string; imageData?: string; answers: AnswerView[] };
-type PlayerView = { id: string; name: string };
+// type PlayerView = { id: string; name: string };
 
 export default function GamePlay() {
   const game = gameController.getGame();
@@ -19,11 +20,12 @@ export default function GamePlay() {
   const [totalQuestions, setTotalQuestions] = useState(game?.questions.length ?? 0);
   const [counts, setCounts] = useState<Record<number, number>>({});
   const [voterCount, setVoterCount] = useState(0);
-  const [players, setPlayers] = useState<PlayerView[]>([]);
+  const [players, setPlayers] = useState<Player[]>(playerController.getPlayers());
   const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(null);
   const [phaseStart, setPhaseStart] = useState<number>(0);
   const [phaseDuration, setPhaseDuration] = useState<number>(30_000);
   const [msLeft, setMsLeft] = useState<number>(30_000);
+  
 
   // Local visual timer only — server is source of truth for phase changes
   useEffect(() => {
@@ -36,39 +38,84 @@ export default function GamePlay() {
   }, [phase, phaseStart, phaseDuration]);
 
   useEffect(() => {
-    const off = onGameSocketMessage((msg) => {
-      switch (msg?.type) {
-        case "player:list":
-          setPlayers(msg.payload.players ?? []);
-          break;
-        case "question:show":
-          setQuestion(msg.payload.question);
-          setQuestionIndex(msg.payload.questionIndex);
-          setTotalQuestions(msg.payload.totalQuestions);
-          setPhaseDuration(msg.payload.phaseDurationMs);
-          setPhaseStart(Date.now());
-          setMsLeft(msg.payload.phaseDurationMs);
-          setCounts({});
-          setVoterCount(0);
-          setCorrectAnswerId(null);
-          setPhase("question");
-          break;
-        case "vote:update":
-          setCounts(msg.payload.counts ?? {});
-          setVoterCount(msg.payload.voterCount ?? 0);
-          break;
-        case "question:reveal":
-          setCounts(msg.payload.counts ?? {});
-          setCorrectAnswerId(msg.payload.correctAnswerId ?? null);
-          setPhase("reveal");
-          break;
-        case "game:end":
-          setPhase("ended");
-          break;
-      }
-    });
-    return () => { off?.(); };
+    return playerController.subscribe(setPlayers);
   }, []);
+
+  useEffect(() => {
+    if (!game?.gameCode) return;
+
+    let off: (() => void) | undefined;
+    connectWebSocket().then(() => {
+      off = subscribeToGame(game.gameCode, (msg) => {
+        switch (msg?.type) {
+          case "player:list":
+            setPlayers(msg.payload.players ?? []);
+            break;
+          case "question:show":
+            setQuestion(msg.payload.question);
+            setQuestionIndex(msg.payload.questionIndex);
+            setTotalQuestions(msg.payload.totalQuestions);
+            setPhaseDuration(msg.payload.phaseDurationMs);
+            setPhaseStart(Date.now());
+            setMsLeft(msg.payload.phaseDurationMs);
+            setCounts({});
+            setVoterCount(0);
+            setCorrectAnswerId(null);
+            setPhase("question");
+            break;
+          case "vote:update":
+            setCounts(msg.payload.counts ?? {});
+            setVoterCount(msg.payload.voterCount ?? 0);
+            break;
+          case "question:reveal":
+            setCounts(msg.payload.counts ?? {});
+            setCorrectAnswerId(msg.payload.correctAnswerId ?? null);
+            setPhase("reveal");
+            break;
+          case "game:end":
+            setPhase("ended");
+            break;
+        }
+      });
+    });
+
+    return () => { off?.(); };
+  }, [game?.gameCode]);
+
+  // useEffect(() => {
+  //   const off = onGameSocketMessage((msg) => {
+  //     switch (msg?.type) {
+  //       case "player:list":
+  //         setPlayers(msg.payload.players ?? []);
+  //         break;
+  //       case "question:show":
+  //         setQuestion(msg.payload.question);
+  //         setQuestionIndex(msg.payload.questionIndex);
+  //         setTotalQuestions(msg.payload.totalQuestions);
+  //         setPhaseDuration(msg.payload.phaseDurationMs);
+  //         setPhaseStart(Date.now());
+  //         setMsLeft(msg.payload.phaseDurationMs);
+  //         setCounts({});
+  //         setVoterCount(0);
+  //         setCorrectAnswerId(null);
+  //         setPhase("question");
+  //         break;
+  //       case "vote:update":
+  //         setCounts(msg.payload.counts ?? {});
+  //         setVoterCount(msg.payload.voterCount ?? 0);
+  //         break;
+  //       case "question:reveal":
+  //         setCounts(msg.payload.counts ?? {});
+  //         setCorrectAnswerId(msg.payload.correctAnswerId ?? null);
+  //         setPhase("reveal");
+  //         break;
+  //       case "game:end":
+  //         setPhase("ended");
+  //         break;
+  //     }
+  //   });
+  //   return () => { off?.(); };
+  // }, []);
 
   function startGame() {
     gameController.send({
@@ -106,7 +153,7 @@ export default function GamePlay() {
           )}
           <ul className="my-6 space-y-1">
             {players.map((p) => (
-              <li key={p.id} className="text-lg">{p.name}</li>
+              <li key={p.id} className="text-lg">{p.displayName}</li>
             ))}
           </ul>
           <button

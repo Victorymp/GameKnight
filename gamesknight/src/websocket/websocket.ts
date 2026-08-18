@@ -154,3 +154,11 @@ export function subscribeToUserQueue(
   console.log("Subscribed, id:", sub.id);
   return () => sub.unsubscribe();
 }
+
+export function subscribeToGame(gameCode: string, cb: (msg: any) => void): () => void {
+  if (!stompClient?.connected) throw new Error("WebSocket not connected");
+  const sub = stompClient.subscribe(`/topic/game/${gameCode}`, (frame) => {
+    try { cb(JSON.parse(frame.body)); } catch { cb(frame.body); }
+  });
+  return () => sub.unsubscribe();
+}

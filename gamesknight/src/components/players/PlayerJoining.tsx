@@ -35,7 +35,9 @@ export function PlayerJoining() {
         JSON.stringify({ playerId, displayName: confirmedName })
       );
 
-      navigate(`/player/joined/${effectiveGameId}`, {
+      
+
+      navigate(`/player/game/${effectiveGameId}`, {
         state: { playerId, displayName: confirmedName },
       });
     } catch (err) {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import gameController from "../../components/controllers/game-controller";
 import { onGameSocketMessage } from "../../websocket/websocket-controller";
 
@@ -28,7 +28,10 @@ function getStoredPlayer(gameCode: string): { playerId: string; displayName: str
 
 export default function PlayerVotePage() {
   const game = gameController.getGame();
-  const gameCode = game?.gameCode;
+  const { gameCode } = useParams<{ gameCode: string }>();
+  // const gameCode = game?.gameCode;
+
+  console.log(`Current Session: ${sessionStorage.getItem(`player:${gameCode}`)}`)
 
   // Read once at mount from sessionStorage — no state needed
   const playerId = useMemo(
@@ -63,6 +66,7 @@ export default function PlayerVotePage() {
   }, []);
 
   // If no identity, kick back to the join page
+  console.log(`Player Id: ${playerId} and Game Code: ${gameCode}`)
   if (!playerId || !gameCode) {
     return <Navigate to={`/player/join/${gameCode ?? ""}`} replace />;
   }
