@@ -1,10 +1,10 @@
-package com.example.gamesknight.game;
+package com.example.gamesknight.session;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-
+import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
@@ -79,5 +79,12 @@ public class GameController {
 
         log.info("Unhandled type '{}', falling back to echo", type);
         return message;
+    }
+
+    @MessageMapping("/game/{gameCode}/relay")
+    @SendTo("/topic/game/{gameCode}")
+    public Object relay(@DestinationVariable String gameCode, Object message) {
+        return message; // simple relay; add validation as needed
+        
     }
 }

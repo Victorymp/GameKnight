@@ -1,11 +1,12 @@
-import { type GameData, type Player } from "../../models/model";
+import { type GameData, type Player, type Question } from "../../models/model";
 import {
   connectGameSocket,
   onGameSocketMessage,
   sendGameSocketMessage,
 } from "../../websocket/websocket-controller";
-import {createGame as apiCreateGame } from "../../api/api-controller";
+import {createGame as apiCreateGame, startGame as apiStartGame } from "../../api/api-controller";
 import playerController from "./player-controller";
+import { connectWebSocket, subscribeToUserQueue } from "../../websocket/websocket";
 
 interface PlayerJoinProp{
   id: string;
@@ -27,11 +28,39 @@ class GameController {
     return GameController.instance;
   }
 
-  async createGame(gameCode?: string, data?: Partial<GameData>): Promise<GameData | undefined> {
+  async createGame(gameCode?: string, questions?: Question[]): Promise<GameData | undefined> {
     if (this.gameData) return this.gameData;
 
     try {
-      const created = await apiCreateGame(gameCode ?? "");
+      const newGame: Omit<GameData, "id" | "gameQrB64"> = {
+        gameCode: gameCode ?? "",
+        questions: questions ?? [],
+      };
+
+      const created = await apiCreateGame(newGame);
+      this.gameData = created;
+
+      const withPlayers = created as GameData & { players?: Player[] };
+      if (withPlayers.players) {
+        playerController.setPlayers(withPlayers.players);
+      }
+    } catch (err) {
+      console.error("Failed to create game", err);
+      return undefined;
+    } finally {
+      await this.initSocket();
+    }
+
+    return this.gameData;
+  }
+
+  async startGame(gameCode?: string, data?: Partial<GameData>): Promise<GameData | undefined> {
+    if (this.gameData) return this.gameData;
+
+    try {
+      console.log(`Starting API`);
+      const created = await apiStartGame(gameCode ?? "");
+      
       this.gameData = created;
       if ((created as GameData & { players?: Player[] }).players) {
         playerController.setPlayers((created as unknown as { players: Player[] }).players);
@@ -109,38 +138,39 @@ class GameController {
     }
   }
 
-  async joinGame(gameCode: string,{id, displayName}:PlayerJoinProp): Promise<GameData | undefined> {
-    console.log("GameController.joinGame()", { gameCode, id, displayName });
-    const player = { id, displayName };
-    playerController.addPlayer(player);
+  async joinGame(gameCode: string, displayName: string): Promise<{ playerId: string; displayName: string }> {
+    await connectWebSocket();
 
-    if (this.gameData) {
-      const currentPlayers = (this.gameData as GameData & { players?: Player[] }).players ?? [];
-      this.gameData = {
-        ...this.gameData,
-        players: currentPlayers.some((p) => p.id === id)
-          ? currentPlayers.map((p) => (p.id === id ? player : p))
-          : [...currentPlayers, player],
-      } as GameData;
-    }
+    return new Promise((resolve, reject) => {
+      console.log("About to call subscribeToUserQueue, function is:", typeof subscribeToUserQueue);
+      const off = subscribeToUserQueue("/user/queue/join", (msg) => {
+        console.log("Got message on /user/queue/join:", msg);
+        if (msg?.type === "join:ack" && msg?.payload?.gameCode === gameCode) {
+          off();
+          clearTimeout(timeoutId);
+          resolve({
+            playerId: msg.payload.playerId,
+            displayName: msg.payload.name,
+          });
+        }
+      });
 
-    await this.initSocket();
-    console.log("Socket initialized for join");
-    try {
-      const joinPayload = { type: "game:join", payload: { gameCode, id, displayName } };
-      console.log("Sending join event", joinPayload);
-      this.send(joinPayload);
-    } catch (err) {
-      console.warn("Could not send join event", err);
-    }
+      const timeoutId = setTimeout(() => {
+        off();
+        reject(new Error("Server didn't reply to join"));
+      }, 5_000);
 
-    return this.gameData;
+      // Small delay to let subscription register on server
+      setTimeout(() => {
+        sendGameSocketMessage(`/app/game/${gameCode}/join`, { name: displayName });
+      }, 200);
+    });
   }
 
 
   send(message: any) {
     console.log("GameController.send()", message);
-    sendGameSocketMessage(message);
+    sendGameSocketMessage("/topic/game",message);
   }
 
   addPlayer(player: Player) {
@@ -169,6 +199,17 @@ class GameController {
 
   getGame(): GameData | undefined {
     return this.gameData;
+  }
+
+  validate(questions: Question[]): string | null {
+    if (questions.length === 0) return "Add at least one question.";
+    for (const q of questions) {
+      if (!q.text.trim()) return "Every question needs text.";
+      if (q.answers.length < 2) return "Every question needs at least 2 answers.";
+      if (q.answers.some((a) => !a.text.trim())) return "Every answer needs text.";
+      if (!q.answers.some((a) => a.correct)) return "Mark one correct answer per question.";
+    }
+    return null;
   }
 
 reset(): void {

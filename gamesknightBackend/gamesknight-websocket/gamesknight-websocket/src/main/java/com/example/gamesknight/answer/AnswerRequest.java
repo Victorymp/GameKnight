@@ -1,4 +1,4 @@
-package com.example.gamesknight.game;
+package com.example.gamesknight.answer;
 
 public class AnswerRequest {
     private String text;

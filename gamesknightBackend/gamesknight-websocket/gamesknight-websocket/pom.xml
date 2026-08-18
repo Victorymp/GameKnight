@@ -70,17 +70,55 @@
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
-		
+	    <dependency>
+	        <groupId>io.github.cdimascio</groupId>
+	        <artifactId>dotenv-java</artifactId>
+	        <version>3.0.0</version>
+	    </dependency>
 		<dependency>
 		    <groupId>com.mysql</groupId>
 		    <artifactId>mysql-connector-j</artifactId>
 		    <scope>runtime</scope>
 		</dependency>
-		
+		<dependency>
+		    <groupId>org.projectlombok</groupId>
+		    <artifactId>lombok</artifactId>
+		    <optional>true</optional>
+		</dependency>
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-docker-compose</artifactId>
 		    <optional>true</optional>
+		</dependency>
+		
+		<!-- Source: https://mvnrepository.com/artifact/com.azure/azure-storage-blob -->
+		<dependency>
+		    <groupId>com.azure</groupId>
+		    <artifactId>azure-storage-blob</artifactId>
+		    <version>12.35.0</version>
+		    <scope>compile</scope>
+		</dependency>
+		
+		<dependency>
+		  <groupId>com.azure</groupId>
+		  <artifactId>azure-storage-queue</artifactId>
+		  <version>12.3.0</version>
+		</dependency>
+		
+		<!-- Source: https://mvnrepository.com/artifact/com.azure/azure-storage-file-share -->
+		<dependency>
+		    <groupId>com.azure</groupId>
+		    <artifactId>azure-storage-file-share</artifactId>
+		    <version>12.31.0</version>
+		    <scope>compile</scope>
+		</dependency>
+		
+		<!-- Source: https://mvnrepository.com/artifact/com.azure/azure-storage-file-datalake -->
+		<dependency>
+		    <groupId>com.azure</groupId>
+		    <artifactId>azure-storage-file-datalake</artifactId>
+		    <version>12.28.0</version>
+		    <scope>compile</scope>
 		</dependency>
 	</dependencies>
 

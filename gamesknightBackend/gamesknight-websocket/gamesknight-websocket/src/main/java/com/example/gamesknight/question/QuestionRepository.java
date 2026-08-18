@@ -1,5 +1,5 @@
 
-package com.example.gamesknight.game;
+package com.example.gamesknight.question;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,4 +14,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
   Optional<Question> findById(Long id);
 
   List<Question> findByGameId(Long gameId);
+  
+  @Query("SELECT DISTINCT q FROM Question q LEFT JOIN FETCH q.answers WHERE q.game.gameCode = :gameCode")
+  List<Question> findByGameCodeWithAnswers(@Param("gameCode") String gameCode);
 }

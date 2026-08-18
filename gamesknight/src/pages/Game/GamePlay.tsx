@@ -1,118 +1,170 @@
-import { useEffect, useState } from "react";
-import { type GameData, type Player } from "../../models/model";
-import { Screen, Header } from "../../components/ui/Screen";
-import { Card } from "../../components/ui/Card";
-import { Button } from "../../components/ui/Button";
+import { useEffect, useMemo, useRef, useState } from "react";
 import gameController from "../../components/controllers/game-controller";
-import playerController from "../../components/controllers/player-controller";
-import SideBar from "../../components/ui/SideBar";
-import { getGameData } from "../../api/api-controller";
-import { useParams } from "react-router-dom";
+import { onGameSocketMessage } from "../../websocket/websocket-controller";
+import type { Question, Answer } from "../../models/model";
+
+const ANSWER_COLORS = ["bg-red-500", "bg-blue-500", "bg-yellow-500", "bg-green-500"];
+const ANSWER_LETTERS = ["A", "B", "C", "D"];
+
+type Phase = "lobby" | "question" | "reveal" | "ended";
+type AnswerView = { id: number; text: string };
+type QuestionView = { id: number; text: string; imageData?: string; answers: AnswerView[] };
+type PlayerView = { id: string; name: string };
 
 export default function GamePlay() {
-  const { gameId } = useParams<{ gameId: string }>();
-  const [game, setGame] = useState<GameData | null>(null);
-  const [gameCodeQr, setGameCodeQr] = useState<string | undefined>();
-  const [gameCodeInput, setGameCodeInput] = useState<string>("");
-  const [gameCode, setGameCode] = useState<string>();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  const [players, setPlayers] = useState<Player[]>(playerController.getPlayers());
+  const game = gameController.getGame();
+  const [phase, setPhase] = useState<Phase>("lobby");
+  const [question, setQuestion] = useState<QuestionView | null>(null);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(game?.questions.length ?? 0);
+  const [counts, setCounts] = useState<Record<number, number>>({});
+  const [voterCount, setVoterCount] = useState(0);
+  const [players, setPlayers] = useState<PlayerView[]>([]);
+  const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(null);
+  const [phaseStart, setPhaseStart] = useState<number>(0);
+  const [phaseDuration, setPhaseDuration] = useState<number>(30_000);
+  const [msLeft, setMsLeft] = useState<number>(30_000);
+
+  // Local visual timer only — server is source of truth for phase changes
+  useEffect(() => {
+    if (phase !== "question") return;
+    const interval = window.setInterval(() => {
+      const elapsed = Date.now() - phaseStart;
+      setMsLeft(Math.max(0, phaseDuration - elapsed));
+    }, 100);
+    return () => window.clearInterval(interval);
+  }, [phase, phaseStart, phaseDuration]);
 
   useEffect(() => {
-    setPlayers(playerController.getPlayers());
-    const unsubscribe = playerController.subscribe(setPlayers);
-    return unsubscribe;
+    const off = onGameSocketMessage((msg) => {
+      switch (msg?.type) {
+        case "player:list":
+          setPlayers(msg.payload.players ?? []);
+          break;
+        case "question:show":
+          setQuestion(msg.payload.question);
+          setQuestionIndex(msg.payload.questionIndex);
+          setTotalQuestions(msg.payload.totalQuestions);
+          setPhaseDuration(msg.payload.phaseDurationMs);
+          setPhaseStart(Date.now());
+          setMsLeft(msg.payload.phaseDurationMs);
+          setCounts({});
+          setVoterCount(0);
+          setCorrectAnswerId(null);
+          setPhase("question");
+          break;
+        case "vote:update":
+          setCounts(msg.payload.counts ?? {});
+          setVoterCount(msg.payload.voterCount ?? 0);
+          break;
+        case "question:reveal":
+          setCounts(msg.payload.counts ?? {});
+          setCorrectAnswerId(msg.payload.correctAnswerId ?? null);
+          setPhase("reveal");
+          break;
+        case "game:end":
+          setPhase("ended");
+          break;
+      }
+    });
+    return () => { off?.(); };
   }, []);
 
-  useEffect(() => {
-    if (!gameId) return;
-
-    getGameData(gameId)
-      .then((data) => setGame(data))
-      .catch((error) => {
-        console.error("Failed to load game data", error);
-      });
-  }, [gameId]);
-
-  async function createGame() {
-    if (!gameCodeInput) {
-      setError("Please enter a game code before starting.");
-      return;
-    }
-
-    setError(undefined);
-    setIsLoading(true);
-    try {
-      const created = await gameController.createGame(gameCodeInput);
-      setGameCode(created?.gameCode);
-      const b64 = created?.gameQrB64;
-      if (b64 && typeof b64 === "string") {
-        const src = b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
-        setGameCodeQr(src);
-      } else {
-        setGameCodeQr(undefined);
-        setError("No QR available for this game.");
-      }
-    } catch (err) {
-      setError("Failed to create game.");
-      setGameCodeQr(undefined);
-    } finally {
-      setIsLoading(false);
-    }
+  function startGame() {
+    gameController.send({
+      destination: `/app/game/${game?.gameCode}/start`,
+      body: {},
+    });
   }
 
+  const timerPct = (msLeft / phaseDuration) * 100;
+
+  if (!game) return <div className="p-8">No game loaded.</div>;
+
   return (
-    <Screen>
-      <Header/>
-      <div className="flex flex-1">
-        <SideBar className="w-56 shrink-0" />
-        <main>
-          <div className="flex flex-1 gap-2 py-3 px-3">
-            <Card>
-              <div className="flex flex-col gap-2">
-                <input
-                  value={gameCodeInput}
-                  onChange={(event) => setGameCodeInput(event.target.value)}
-                  placeholder="Enter game code"
-                  className="border p-2 rounded"
-                />
-                <Button onClick={() => createGame()}>
-                  Start Game
-                </Button>
-              </div>
-            </Card>
+    <div className="min-h-screen bg-slate-900 text-white p-8">
+      <header className="flex justify-between items-center mb-6">
+        <div>
+          <div className="text-sm opacity-70">Game code</div>
+          <div className="text-3xl font-mono font-bold">{game.gameCode}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm opacity-70">Players</div>
+          <div className="text-3xl font-bold">{players.length}</div>
+        </div>
+      </header>
+
+      {phase === "lobby" && (
+        <div className="text-center mt-20">
+          <h1 className="text-4xl font-bold mb-6">Waiting for players...</h1>
+          {game.qrImageBase64 && (
+            <img
+              src={`data:image/png;base64,${game.qrImageBase64}`}
+              alt="Join QR"
+              className="mx-auto w-64 h-64 rounded-lg bg-white p-2"
+            />
+          )}
+          <ul className="my-6 space-y-1">
+            {players.map((p) => (
+              <li key={p.id} className="text-lg">{p.name}</li>
+            ))}
+          </ul>
+          <button
+            onClick={startGame}
+            disabled={players.length === 0}
+            className="mt-4 px-8 py-3 bg-green-500 rounded-lg text-xl font-bold disabled:opacity-40"
+          >
+            Start Game
+          </button>
+        </div>
+      )}
+
+      {(phase === "question" || phase === "reveal") && question && (
+        <>
+          <div className="mb-4">
+            <div className="flex justify-between text-sm mb-1">
+              <span>Question {questionIndex + 1} of {totalQuestions}</span>
+              <span>{voterCount} / {players.length} voted</span>
+            </div>
+            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-cyan-400 transition-all duration-100"
+                style={{ width: `${timerPct}%` }}
+              />
+            </div>
           </div>
-          <div className="flex flex-1 gap-2 py-3 px-3">
-            <Card>
-              {isLoading ? (
-                <div><span>Loading QR...</span></div>
-              ) : error ? (
-                <div><span>{error}</span></div>
-              ) : gameCodeQr ? (
-                <div>
-                  <img src={gameCodeQr} alt="Game QR" />
-                  <span>Has code: {gameCode}</span>
+
+          <h2 className="text-3xl font-bold text-center my-8">{question.text}</h2>
+
+          <div className="grid grid-cols-2 gap-4 max-w-4xl mx-auto">
+            {question.answers.map((a, i) => {
+              const count = counts[a.id] ?? 0;
+              const isCorrect = phase === "reveal" && a.id === correctAnswerId;
+              const isRevealed = phase === "reveal";
+              return (
+                <div
+                  key={a.id}
+                  className={`${ANSWER_COLORS[i]} rounded-lg p-6 flex flex-col ${
+                    isRevealed && !isCorrect ? "opacity-40" : ""
+                  } ${isCorrect ? "ring-4 ring-white" : ""}`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-4xl font-black">{ANSWER_LETTERS[i]}</span>
+                    <span className="text-xl">{a.text}</span>
+                  </div>
+                  <div className="text-3xl font-bold text-right mt-auto">{count}</div>
                 </div>
-              ) : (
-                <div><span>No code</span></div>
-              )}
-            </Card>
+              );
+            })}
           </div>
-          <div className="flex flex-1 gap-2 py-3 px-3">
-            <Card>
-              <div className="flex flex-col gap-2">
-                <span className="font-semibold">Players joined: {players.length}</span>
-                <ul>
-                  {players.map((player) => (
-                    <li key={player.id}>{player.displayName}</li>
-                  ))}
-                </ul>
-              </div>
-            </Card>
-          </div>
-        </main>
-      </div>
-    </Screen>
+        </>
+      )}
+
+      {phase === "ended" && (
+        <div className="text-center mt-20">
+          <h1 className="text-5xl font-bold">Game Over</h1>
+        </div>
+      )}
+    </div>
   );
 }

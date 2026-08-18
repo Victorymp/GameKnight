@@ -24,10 +24,17 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
   return result;
 }
 
-export const createGame = (gameCode: string): Promise<GameData> =>
+export const startGame = (gameCode: string): Promise<GameData> =>
   enqueue(() =>
     apiClient
-      .post<GameData>(`/game/creategame`, { gameCode }satisfies CreateGameRequest)
+      .post<GameData>(`/game/startgame`, { gameCode }satisfies CreateGameRequest)
+      .then((r) => r.data)
+  );
+
+export const createGame = (newGame: Omit<GameData, "id" | "gameQrB64">): Promise<GameData> =>
+  enqueue(() => 
+    apiClient
+      .post<GameData>(`/game/creategame`, newGame )
       .then((r) => r.data)
   );
 

@@ -2,23 +2,23 @@ export interface UserData {
 
 }
 
+export interface Player{
+  displayName: string;
+  id: string;
+}
+
 export interface GameQr{
   gameQrB64: string;
   // Game code is the code from the game you pick
-  gameCode?: string;
+  gameCode: string;
 }
 
 export interface GameData extends GameQr{
   // Game id is th Id of the running game
   id: number;
   questions: Question[];
+  qrImageBase64?: string
 }
-
-export interface Player{
-  displayName: string;
-  id: string;
-}
-
 
 export interface Answer {
   id: string;

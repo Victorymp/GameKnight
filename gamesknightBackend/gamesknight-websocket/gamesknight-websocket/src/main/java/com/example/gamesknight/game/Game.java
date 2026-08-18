@@ -1,8 +1,19 @@
 package com.example.gamesknight.game;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import io.nayuki.qrcodegen.QrCode;
 import jakarta.persistence.*;
+import lombok.ToString;
+
 import javax.imageio.ImageIO;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.example.gamesknight.question.Question;
+import com.example.gamesknight.storage.GameKnightStorage;
+import com.example.gamesknight.storage.BlobNotFoundException;
+
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -10,7 +21,12 @@ import java.util.Base64;
 import java.util.List;
 
 @Entity
+@ToString(exclude = "questions")
 public class Game {
+	
+	
+	private static final Dotenv env = Dotenv.load();
+	private static final String API_URL = env.get("API_URL");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,10 +34,38 @@ public class Game {
 
     private String gameCode;
     private String gameQrB64;
+    @Transient
+    private String qrImageBase64;
 
     @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
+    @com.fasterxml.jackson.annotation.JsonManagedReference
     private List<Question> questions = new ArrayList<>();
+    
+    private static final Logger logger = LoggerFactory.getLogger(Game.class);
+    
+    protected Game() {
+    	
+    }
+    
+    public Game(String gameCode) {
+    	this.gameCode = gameCode;
+    }
+    public Long getId() {
+        return id;
+    }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
+    public String getQrImageBase64() { 
+    	return qrImageBase64;
+    }
+
+    public void setQrImageBase64(String qrImageBase64) {
+        this.qrImageBase64 = qrImageBase64;
+    }
+    
     public String getGameCode() {
         return gameCode;
     }
@@ -51,16 +95,58 @@ public class Game {
         questions.remove(question);
         question.setGame(null);
     }
-
-    public Game createGame(String gameCode) {
-        this.gameCode = gameCode;
-        String gameUrl = "http://192.168.1.220:5173/player/join/" + this.gameCode;
+    
+//    public Game startGame() {
+//        String blobName = "qr-" + this.gameCode + ".png";
+//        try {
+//            byte[] qrBytes = new GameKnightStorage().getQrIamage(blobName);
+//            this.qrImageBase64 = Base64.getEncoder().encodeToString(qrBytes);
+//        } catch (BlobNotFoundException e) {
+//            // Blob missing — regenerate the QR, upload it, and encode it for the response
+//            try {
+//                String gameUrl = API_URL + "/player/join/" + this.gameCode;
+//                String qrBytesBase64 = generateQrcode(gameUrl);   // returns base64 string
+//                // String qrBlobUrl = new GameKnightStorage().uploadQr(blobName, qrBytesBase64);
+//                // this.setGameQrB64(qrBlobUrl);                     // URL stays in the column (small, fits)
+//                this.qrImageBase64 = qrBytesBase64;               // base64 goes in the transient field
+//            } catch (Exception ex) {
+//                logger.error("Failed to regenerate QR code for game {}", this.gameCode, ex);
+//            }
+//        } catch (Exception e) {
+//            logger.error("Failed to fetch QR code for game {}", this.gameCode, e);
+//        }
+//        return this;
+//    }
+    
+    public Game startGame() {
         try {
-            this.gameQrB64 = this.generateQrcode(gameUrl);
+            String gameUrl = API_URL + "/player/join/" + this.gameCode;
+            this.qrImageBase64 = generateQrcode(gameUrl);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to generate QR code for game {}", this.gameCode, e);
         }
         return this;
+    }
+
+    public Game createGame() {
+        String gameUrl = API_URL + "/player/join/" + gameCode;
+        try {
+        	String qrBytes = generateQrcode(gameUrl);
+
+            String blobName = "qr-" + gameCode + ".png";
+            String qrBlobUrl = new GameKnightStorage().uploadQr(blobName, qrBytes);
+
+            this.setGameQrB64(qrBlobUrl); // URL goes to DB
+        } catch (Exception e) {
+            logger.error("Failed to generate/upload QR code for game {}", gameCode, e);
+        }
+        return this;
+    }
+    
+    public void generateQrCode() throws Exception {
+    	String gameUrl = API_URL + "/player/join/" + gameCode;
+    	gameQrB64 = generateQrcode(gameUrl);
+    	
     }
 
     public String generateQrcode(String gameUrl) throws Exception {
@@ -93,12 +179,20 @@ public class Game {
         ImageIO.write(image, "PNG", outputStream);
         return Base64.getEncoder().encodeToString(outputStream.toByteArray());
     }
-
-    public Long getId() {
-        return id;
+    
+    @Override
+    public String toString() {
+        return "Game{" +
+                "id=" + id +
+                ", gameCode='" + gameCode + '\'' +
+                ", gameQrB64='" + truncate(gameQrB64, 60) + '\'' +
+                ", questionCount=" + (questions == null ? 0 : questions.size()) +
+                ", qrImageBase64Length=" + (qrImageBase64 == null ? 0 : qrImageBase64.length()) +
+                '}';
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    private static String truncate(String s, int max) {
+        if (s == null) return null;
+        return s.length() <= max ? s : s.substring(0, max) + "...(" + s.length() + " chars)";
     }
 }

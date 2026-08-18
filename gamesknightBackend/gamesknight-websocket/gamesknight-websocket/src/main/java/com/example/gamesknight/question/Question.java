@@ -1,8 +1,11 @@
-package com.example.gamesknight.game;
+package com.example.gamesknight.question;
 
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.example.gamesknight.answer.Answer;
+import com.example.gamesknight.game.Game;
 
 @Entity
 @Table(name = "questions")
@@ -23,9 +26,11 @@ public class Question {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "game_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonBackReference
     private Game game;
 
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
+    @com.fasterxml.jackson.annotation.JsonManagedReference
     private List<Answer> answers = new ArrayList<>();
 
     protected Question() {
@@ -35,6 +40,10 @@ public class Question {
     public Question(String text, Game game) {
         this.text = text;
         this.game = game;
+    }
+    
+    public Question createQuestion() {
+    	return this;
     }
 
     public Long getId() {

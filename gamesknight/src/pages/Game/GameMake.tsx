@@ -157,7 +157,15 @@ export default function GameMake() {
     setIsSaving(true);
     try {
       const code = generateGameCode();
-      const game = await createGame(code);
+      
+      const newGame: Omit<GameData, "id" | "gameQrB64"> = {
+        gameCode: code,
+        questions,
+      };
+
+      console.log(newGame);
+
+      const game = await createGame(newGame);
 
       if (!game?.id) {
         throw new Error("Game creation did not return an id");

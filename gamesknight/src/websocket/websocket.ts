@@ -1,6 +1,8 @@
 // websocket.ts
 import { Client, type IMessage } from "@stomp/stompjs";
 
+import SockJS from "sockjs-client";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
 
@@ -13,11 +15,9 @@ let reconnectAttempts = 0;
 let wsListeners: Set<(data: any) => void> = new Set();
 
 // Change the base ws url
-function getWsBase(): string {
-  if(API_URL){
-    return API_URL.replace(/^http/, "ws");
-  }
-  return window.location.origin.replace(/^http/, "ws");
+function getHttpBase(): string {
+  if (API_URL) return API_URL;
+  return window.location.origin;
 }
 
 // Make a inital handshake with the web socket
@@ -40,11 +40,11 @@ export function connectWebSocket(path="/ws"): Promise<void> {
     connectResolvers.push(resolve);
   });
 
-  const brokerURL = `${getWsBase()}${path}`;
-
   // Create a new stomp client which has our websocket
+  const sockJsUrl = `${getHttpBase()}${path}`;
+
   stompClient = new Client({
-    brokerURL,
+    webSocketFactory: () => new SockJS(sockJsUrl),
     reconnectDelay: 0,
     onConnect: () => {
       reconnectAttempts = 0;
@@ -70,7 +70,7 @@ export function connectWebSocket(path="/ws"): Promise<void> {
       connectResolvers.forEach((resolve) => resolve());
       connectResolvers = [];
 
-      console.log(`Connected to STOMP broker: ${brokerURL}`);
+      console.log(`Connected to STOMP broker: ${sockJsUrl}`);
     },
     onStompError: (frame) => {
       console.warn("STOMP error", frame);
@@ -112,7 +112,7 @@ export function sendWsMessage(msg: any) {
     msg,
   });
 
-  if (!stompClient || !stompClient.connected) {   // ← fixed: check .connected, not .active
+  if (!stompClient || !stompClient.connected) {
     throw new Error("WebSocket is not open");
   }
 
@@ -127,4 +127,30 @@ export function sendWsMessage(msg: any) {
     console.error("Failed to publish STOMP message", err);
     throw err;
   }
+}
+
+export function sendGameSocketMessage(destination: string, body: unknown) {
+  if (!stompClient || !stompClient.connected) {
+    throw new Error("WebSocket is not open");
+  }
+  stompClient.publish({ destination, body: JSON.stringify(body) });
+}
+
+export function subscribeToUserQueue(
+  destination: string,
+  handler: (msg: any) => void
+): () => void {
+  if (!stompClient || !stompClient.connected) {   // ← fixed: check .connected, not .active
+    throw new Error("WebSocket is not open");
+  }
+  console.log("subscribeToUserQueue called with:", destination, "connected:", stompClient?.connected);
+  const sub = stompClient.subscribe(destination, (frame) => {
+    try {
+      handler(JSON.parse(frame.body));
+    } catch (e) {
+      console.error("Bad message on user queue", e);
+    }
+  });
+  console.log("Subscribed, id:", sub.id);
+  return () => sub.unsubscribe();
 }
