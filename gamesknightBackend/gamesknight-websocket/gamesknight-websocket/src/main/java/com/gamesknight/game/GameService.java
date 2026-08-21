@@ -1,9 +1,9 @@
-package com.example.gamesknight.game;
+package com.gamesknight.game;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
 
-import com.example.gamesknight.question.QuestionRepository;
+import com.gamesknight.question.QuestionRepository;
 
 import jakarta.transaction.Transactional;
 

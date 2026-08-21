@@ -1,4 +1,4 @@
-package com.example.gamesknight.session;
+package com.gamesknight.session;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

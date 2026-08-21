@@ -1,4 +1,4 @@
-package com.example.gamesknight.storage;
+package com.gamesknight.storage;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

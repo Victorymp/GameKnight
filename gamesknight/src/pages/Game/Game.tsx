@@ -28,7 +28,7 @@ export default function Game() {
                 <div className="flex flex-col gap-2">
                   <p>{game.gameCode}</p>
                   <Button onClick={() => navigate(`/game/${game.gameCode}`)}>
-                    Slect Game
+                    Select Game
                   </Button>
                 </div>
               </Card>

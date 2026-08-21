@@ -1,6 +1,6 @@
-package com.example.gamesknight.answer;
+package com.gamesknight.answer;
 
-import com.example.gamesknight.question.Question;
+import com.gamesknight.question.Question;
 
 import jakarta.persistence.*;
 

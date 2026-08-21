@@ -8,15 +8,9 @@ import {createGame as apiCreateGame, startGame as apiStartGame } from "../../api
 import playerController from "./player-controller";
 import { connectWebSocket, subscribeToUserQueue } from "../../websocket/websocket";
 
-interface PlayerJoinProp{
-  id: string;
-  displayName: string;
-}
-
 class GameController {
   private static instance: GameController | null = null;
   private gameData?: GameData;
-  private wsInitialized = false;
   private connectionReady: Promise<void> | null = null;
 
   private constructor() {}
@@ -83,7 +77,6 @@ class GameController {
 
   private initSocket(path = "/ws"): Promise<void> {
     if (this.connectionReady) return this.connectionReady;
-    this.wsInitialized = true;
 
     this.connectionReady = connectGameSocket(path).then(() => {
       onGameSocketMessage((msg) => this.handleSocketMessage(msg));
@@ -214,7 +207,6 @@ class GameController {
 reset(): void {
     this.gameData = undefined;
     playerController.clear();
-    this.wsInitialized = false;
     this.connectionReady = null;   // ← also reset this so a future reconnect can be awaited
   }
 }

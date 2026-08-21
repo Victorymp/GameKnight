@@ -6,9 +6,6 @@ import playerController from "../../components/controllers/player-controller";
 import { Timer } from "../../components/ui/Timer";
 import { QuestionCard } from "../../components/ui/QuestionCard";
 
-const ANSWER_COLORS = ["bg-red-500", "bg-blue-500", "bg-yellow-500", "bg-green-500"];
-const ANSWER_LETTERS = ["A", "B", "C", "D"];
-
 type Phase = "lobby" | "question" | "reveal" | "ended";
 type AnswerView = { id: number; text: string };
 type QuestionView = { id: number; text: string; imageData?: string; answers: AnswerView[] };
@@ -83,49 +80,12 @@ export default function GamePlay() {
     return () => { off?.(); };
   }, [game?.gameCode]);
 
-  // useEffect(() => {
-  //   const off = onGameSocketMessage((msg) => {
-  //     switch (msg?.type) {
-  //       case "player:list":
-  //         setPlayers(msg.payload.players ?? []);
-  //         break;
-  //       case "question:show":
-  //         setQuestion(msg.payload.question);
-  //         setQuestionIndex(msg.payload.questionIndex);
-  //         setTotalQuestions(msg.payload.totalQuestions);
-  //         setPhaseDuration(msg.payload.phaseDurationMs);
-  //         setPhaseStart(Date.now());
-  //         setMsLeft(msg.payload.phaseDurationMs);
-  //         setCounts({});
-  //         setVoterCount(0);
-  //         setCorrectAnswerId(null);
-  //         setPhase("question");
-  //         break;
-  //       case "vote:update":
-  //         setCounts(msg.payload.counts ?? {});
-  //         setVoterCount(msg.payload.voterCount ?? 0);
-  //         break;
-  //       case "question:reveal":
-  //         setCounts(msg.payload.counts ?? {});
-  //         setCorrectAnswerId(msg.payload.correctAnswerId ?? null);
-  //         setPhase("reveal");
-  //         break;
-  //       case "game:end":
-  //         setPhase("ended");
-  //         break;
-  //     }
-  //   });
-  //   return () => { off?.(); };
-  // }, []);
-
   function startGame() {
     gameController.send({
       destination: `/app/game/${game?.gameCode}/start`,
       body: {},
     });
   }
-
-  const timerPct = (msLeft / phaseDuration) * 100;
 
   if (!game) return <div className="p-8">No game loaded.</div>;
 

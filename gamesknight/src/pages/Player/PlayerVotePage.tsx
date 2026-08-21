@@ -5,9 +5,6 @@ import { onGameSocketMessage } from "../../websocket/websocket-controller";
 import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
 import { AnswerGrid } from "../../components/ui/AnswerGrid";
 
-const ANSWER_COLORS = ["bg-red-500", "bg-blue-500", "bg-yellow-500", "bg-green-500"];
-const ANSWER_LETTERS = ["A", "B", "C", "D"];
-
 type PlayerQuestion = {
   id: number;
   text: string;
@@ -29,7 +26,6 @@ function getStoredPlayer(gameCode: string): { playerId: string; displayName: str
 }
 
 export default function PlayerVotePage() {
-  const game = gameController.getGame();
   const { gameCode } = useParams<{ gameCode: string }>();
   // const gameCode = game?.gameCode;
 

@@ -1,4 +1,4 @@
-package com.example.gamesknight.session;
+package com.gamesknight.session;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;

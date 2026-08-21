@@ -1,11 +1,11 @@
-package com.example.gamesknight.question;
+package com.gamesknight.question;
 
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.example.gamesknight.answer.Answer;
-import com.example.gamesknight.game.Game;
+import com.gamesknight.answer.Answer;
+import com.gamesknight.game.Game;
 
 @Entity
 @Table(name = "questions")

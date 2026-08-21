@@ -1,4 +1,4 @@
-package com.example.gamesknight.game;
+package com.gamesknight.game;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import io.nayuki.qrcodegen.QrCode;
@@ -10,9 +10,9 @@ import javax.imageio.ImageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.example.gamesknight.question.Question;
-import com.example.gamesknight.storage.GameKnightStorage;
-import com.example.gamesknight.storage.BlobNotFoundException;
+import com.gamesknight.question.Question;
+import com.gamesknight.storage.BlobNotFoundException;
+import com.gamesknight.storage.GameKnightStorage;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;

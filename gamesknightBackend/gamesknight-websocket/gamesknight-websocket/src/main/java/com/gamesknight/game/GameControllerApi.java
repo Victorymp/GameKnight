@@ -1,4 +1,4 @@
-package com.example.gamesknight.game;
+package com.gamesknight.game;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
@@ -7,11 +7,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.example.gamesknight.answer.Answer;
-import com.example.gamesknight.answer.AnswerRequest;
-import com.example.gamesknight.question.Question;
-import com.example.gamesknight.question.QuestionRepository;
-import com.example.gamesknight.question.QuestionRequest;
+import com.gamesknight.answer.Answer;
+import com.gamesknight.answer.AnswerRequest;
+import com.gamesknight.question.Question;
+import com.gamesknight.question.QuestionRepository;
+import com.gamesknight.question.QuestionRequest;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;

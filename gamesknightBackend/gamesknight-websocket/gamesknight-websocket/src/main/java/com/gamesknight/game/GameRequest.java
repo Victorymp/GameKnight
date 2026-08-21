@@ -1,8 +1,8 @@
-package com.example.gamesknight.game;
+package com.gamesknight.game;
 
 import java.util.List;
 
-import com.example.gamesknight.question.QuestionRequest;
+import com.gamesknight.question.QuestionRequest;
 
 public class GameRequest {
     private String gameCode;

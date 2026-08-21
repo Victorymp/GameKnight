@@ -1,8 +1,8 @@
-package com.example.gamesknight.question;
+package com.gamesknight.question;
 
 import java.util.List;
 
-import com.example.gamesknight.answer.AnswerRequest;
+import com.gamesknight.answer.AnswerRequest;
 
 public class QuestionRequest {
     private String text;

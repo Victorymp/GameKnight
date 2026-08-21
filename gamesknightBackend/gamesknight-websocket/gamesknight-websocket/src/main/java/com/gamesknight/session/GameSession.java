@@ -1,7 +1,7 @@
-package com.example.gamesknight.session;
+package com.gamesknight.session;
 
-import com.example.gamesknight.game.Game;
-import com.example.gamesknight.question.Question;
+import com.gamesknight.game.Game;
+import com.gamesknight.question.Question;
 
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;

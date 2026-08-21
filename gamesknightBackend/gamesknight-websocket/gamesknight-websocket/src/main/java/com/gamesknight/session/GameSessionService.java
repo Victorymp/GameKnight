@@ -1,10 +1,10 @@
-package com.example.gamesknight.session;
+package com.gamesknight.session;
 
-import com.example.gamesknight.game.Game;
-import com.example.gamesknight.game.GameRepository;
-import com.example.gamesknight.question.Question;
-import com.example.gamesknight.question.QuestionRepository;
-import com.example.gamesknight.answer.Answer;
+import com.gamesknight.answer.Answer;
+import com.gamesknight.game.Game;
+import com.gamesknight.game.GameRepository;
+import com.gamesknight.question.Question;
+import com.gamesknight.question.QuestionRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

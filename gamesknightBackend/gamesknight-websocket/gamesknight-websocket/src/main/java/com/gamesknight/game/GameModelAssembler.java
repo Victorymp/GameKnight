@@ -1,4 +1,4 @@
-package com.example.gamesknight.game;
+package com.gamesknight.game;
 
 
 

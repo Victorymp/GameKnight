@@ -1,5 +1,5 @@
 
-package com.example.gamesknight.question;
+package com.gamesknight.question;
 
 import java.util.List;
 import java.util.Optional;

@@ -1,4 +1,4 @@
-package com.example.gameknight.playet;
+package com.gameknight.playet;
 
 public class Player {
 	private String name;

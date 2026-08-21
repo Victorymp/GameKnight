@@ -1,4 +1,4 @@
-package com.example.gamesknight.session;
+package com.gamesknight.session;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
