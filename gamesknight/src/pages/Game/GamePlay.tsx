@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
 import gameController from "../../components/controllers/game-controller";
-import type { Player } from "../../models/model";
+import type { Player, QuestionView, QuestionImage } from "../../models/model";
 import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
 import playerController from "../../components/controllers/player-controller";
 import { Timer } from "../../components/ui/Timer";
 import { QuestionCard } from "../../components/ui/QuestionCard";
+import { fetchQuestionImage } from "../../api/api-controller";
 
-type Phase = "lobby" | "question" | "reveal" | "ended";
-type AnswerView = { id: number; text: string };
-type QuestionView = { id: number; text: string; imageData?: string; answers: AnswerView[] };
+type Phase = "lobby" | "get_ready" | "question" | "reveal" | "ended";
+
+
 // type PlayerView = { id: string; name: string };
 
 export default function GamePlay() {
   const game = gameController.getGame();
+  const [gameCode, setGameCode] = useState<string>();
   const [phase, setPhase] = useState<Phase>("lobby");
+  const [playerCount, setPlayerCount] = useState<number>(0);
   const [question, setQuestion] = useState<QuestionView | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(game?.questions.length ?? 0);
@@ -24,8 +27,12 @@ export default function GamePlay() {
   const [phaseStart, setPhaseStart] = useState<number>(0);
   const [phaseDuration, setPhaseDuration] = useState<number>(30_000);
   const [msLeft, setMsLeft] = useState<number>(30_000);  
+  const [questionImage, setQuestionImage] = useState<QuestionImage |null>(null);
 
-  // Local visual timer only — server is source of truth for phase changes
+  useEffect(() => {
+    setTotalQuestions(game?.questions.length ?? 0);
+  }, [game?.questions.length]);
+
   useEffect(() => {
     if (phase !== "question") return;
     const interval = window.setInterval(() => {
@@ -40,6 +47,25 @@ export default function GamePlay() {
   }, []);
 
   useEffect(() => {
+    if (!question?.id) {
+      setQuestionImage(null);
+      return;
+    }
+    if (!question.hasImage) {
+      setQuestionImage(null);
+      return;
+    }
+      let cancelled = false;
+      fetchQuestionImage(question.id).then((data) => {
+        if (cancelled) return;
+        setQuestionImage(data);
+      });
+      console.log(`Question Image set: ${question.id}`);
+
+      return () => { cancelled = true; };
+    }, [question?.id, question?.hasImage]);
+
+  useEffect(() => {
     if (!game?.gameCode) return;
 
     let off: (() => void) | undefined;
@@ -48,6 +74,18 @@ export default function GamePlay() {
         switch (msg?.type) {
           case "player:list":
             setPlayers(msg.payload.players ?? []);
+            break;
+          case "question:preload":
+            setQuestion(msg.payload.question);
+            setQuestionIndex(msg.payload.questionIndex);
+            setTotalQuestions(msg.payload.totalQuestions);
+            setPhaseDuration(msg.payload.phaseDurationMs);
+            setPhaseStart(Date.now());
+            setMsLeft(msg.payload.phaseDurationMs);
+            setCounts({});
+            setVoterCount(0);
+            setCorrectAnswerId(null);
+            setPhase("get_ready");
             break;
           case "question:show":
             setQuestion(msg.payload.question);
@@ -64,6 +102,7 @@ export default function GamePlay() {
           case "vote:update":
             setCounts(msg.payload.counts ?? {});
             setVoterCount(msg.payload.voterCount ?? 0);
+            setPlayerCount(msg.payload.playerCount ?? 0);
             break;
           case "question:reveal":
             setCounts(msg.payload.counts ?? {});
@@ -76,8 +115,11 @@ export default function GamePlay() {
         }
       });
     });
-
-    return () => { off?.(); };
+    
+    return () => { 
+      off?.();
+      playerController.clear();
+    };
   }, [game?.gameCode]);
 
   function startGame() {
@@ -127,6 +169,21 @@ export default function GamePlay() {
         </div>
       )}
 
+      {phase === "get_ready" && question && (
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="text-2xl mb-4">Get ready...</div>
+          <h2 className="text-3xl font-bold text-center">{question.text}</h2>
+          {questionImage && (
+            <img
+              src={`data:${questionImage.type};base64,${questionImage.content}`}
+              alt="Question"
+              className="max-h-64 rounded mt-6"
+            />
+          )}
+          <Timer msLeft={msLeft} totalMs={phaseDuration} />
+        </div>
+      )}
+
       {(phase === "question" || phase === "reveal") && question && (
         <>
           <div className="mb-4">
@@ -142,6 +199,7 @@ export default function GamePlay() {
             counts={counts}
             correctAnswerId={correctAnswerId}
             revealed={phase === "reveal"}
+            image={questionImage}
           />
         </>
       )}

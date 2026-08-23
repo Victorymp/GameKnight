@@ -29,6 +29,7 @@ class GameController {
       const newGame: Omit<GameData, "id" | "gameQrB64"> = {
         gameCode: gameCode ?? "",
         questions: questions ?? [],
+        images: []
       };
 
       const created = await apiCreateGame(newGame);

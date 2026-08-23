@@ -12,7 +12,7 @@ CREATE TABLE questions (
     CONSTRAINT fk_questions_game
         FOREIGN KEY (game_id) REFERENCES game(id)
         ON DELETE CASCADE
-);
+); 
 
 CREATE TABLE answers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,

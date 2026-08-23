@@ -18,7 +18,7 @@ export interface GameData extends GameQr{
   id: number;
   questions: Question[];
   qrImageBase64?: string;
-  thumbnails: Images[];
+  images: Image[];
 }
 
 export interface Answer {
@@ -30,13 +30,42 @@ export interface Answer {
 export interface Question {
   id: string;
   text: string;
-  imagePreview?: string; // base64 data URL for preview/storage
   answers: Answer[];
+  images: Image[];
 }
 
-export interface Images {
+export interface Image {
   isThumbnails: boolean;
   isPrimary: boolean;
+  type: string;
+  category?: string;
   title: string;
   content: string;
+  path?: string;
+}
+
+
+export interface QuestionView  { 
+  id: number; 
+  text: string; 
+  images: Image[];
+  answers: AnswerView[];
+  hasImage: boolean;
+}
+
+export interface QuestionImage {
+  type: string;
+  content: string;
+}
+
+
+export interface AnswerView { 
+  id: number; 
+  text: string 
+}
+
+export interface PlayerQuestion {
+  id: number;
+  text: string;
+  answers: { id: number; text: string }[];
 }

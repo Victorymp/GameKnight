@@ -1,24 +1,25 @@
 import { useEffect, useState } from "react";
-import { type GameData, type Player } from "../../models/model";
+import type { GameData, Player, Image } from "../../models/model";
 import { Screen, Header } from "../../components/ui/Screen";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import gameController from "../../components/controllers/game-controller";
 import playerController from "../../components/controllers/player-controller";
 import SideBar from "../../components/ui/SideBar";
-import { getGameData } from "../../api/api-controller";
+import { fetchGame, getGameData } from "../../api/api-controller";
 import { useParams, useNavigate } from "react-router-dom";
 import { onGameSocketMessage } from "../../websocket/websocket-controller";
-import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
+import { connectWebSocket, sendGameSocketMessage, subscribeToGame } from "../../websocket/websocket";
 
 export default function GameLobby() {
   const { gameId } = useParams<{ gameId: string }>();
-  const [, setGame] = useState<GameData | null>(null);
+  const [game, setGame] = useState<GameData | null>(null);
   const [gameCodeQr, setGameCodeQr] = useState<string | undefined>();
   const [gameCode, setGameCode] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [players, setPlayers] = useState<Player[]>(playerController.getPlayers());
+  const [thumbnail, setThumbnail] = useState<Image | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,44 +29,80 @@ export default function GameLobby() {
   }, []);
 
   useEffect(() => {
-    if (!gameId) return;
-
-    const off = onGameSocketMessage((msg) => {
-      if (msg?.type === "player:list") {
-        const incoming = (msg.payload?.players ?? []) as Player[];
-        playerController.setPlayers(incoming);
-      }
-    });
-
-    return () => { off?.(); };
-  }, [gameId]);
+    async function getGameData(id: number){
+      const gameData = await fetchGame(id);
+      setGame(gameData);
+    }
+    if(!game) getGameData(2);
+  }, []);
 
   useEffect(() => {
-    if (!gameId) return;
+    const code = game?.gameCode;
+    if (!code) return;
 
     let off: (() => void) | undefined;
+
     connectWebSocket().then(() => {
-      off = subscribeToGame(gameId, (msg) => {
+      off = subscribeToGame(code, (msg) => {
         if (msg?.type === "player:list") {
           playerController.setPlayers(msg.payload?.players ?? []);
         }
       });
     });
 
-    return () => { off?.(); };
-  }, [gameId]);
+    return () => {
+      off?.();
+      playerController.clear();  // also clear stale players when switching games
+    };
+  }, [game?.gameCode]);
+
+  useEffect(() => {
+  const code = game?.gameCode;
+  if (!code) return;
+
+  let off: (() => void) | undefined;
+
+  connectWebSocket().then(() => {
+      // Reset the server-side session first
+      sendGameSocketMessage(`/app/game/${code}/reset`, {});
+      
+      // Then subscribe to updates
+      off = subscribeToGame(code, (msg) => {
+        switch (msg?.type) {
+          case "player:list":
+            playerController.setPlayers(msg.payload?.players ?? []);
+            break;
+          case "game:reset":
+            playerController.clear();
+            break;
+        }
+      });
+    });
+
+    return () => {
+      off?.();
+      playerController.clear();
+    };
+  }, [game?.gameCode]);
 
   useEffect(() => {
     if (!gameId) return;
     const getGame: Omit<GameData, "id" | "gameQrB64"> = {
         gameCode: gameId ?? "",
         questions: [],
+        images: []
       };
     getGameData(getGame)
       .then((data) => setGame(data))
       .catch((error) => {
         console.error("Failed to load game data", error);
       });
+    
+    if (!game) return;
+    const thumbnail_primary = game.images.find((im) => im.isThumbnails && im.isPrimary);
+    if (!thumbnail_primary) return;
+    setThumbnail(thumbnail_primary);
+
   }, [gameId]);
 
   async function prepareGame() {
@@ -105,10 +142,10 @@ export default function GameLobby() {
       setError("No game loaded.");
       return;
     }
-    if (players.length === 0) {
-      setError("Need at least one player to start.");
-      return;
-    }
+    // if (players.length === 0) {
+    //   setError("Need at least one player to start.");
+    //   return;
+    // }
     setError(undefined);
     
     navigate(`/game/${gameCode}/host`);
@@ -144,7 +181,7 @@ export default function GameLobby() {
                   <div><span>{error}</span></div>
                 ) : gameCodeQr ? (
                   <div>
-                    <img src={gameCodeQr} alt="Game QR" />
+                    <img src={thumbnail?.content} alt={thumbnail?.title} />
                     <span>Has code: {gameCode}</span>
                   </div>
                 ) : (

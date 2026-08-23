@@ -1,5 +1,6 @@
 package com.gamesknight.answer;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.gamesknight.question.Question;
 
 import jakarta.persistence.*;
@@ -20,7 +21,7 @@ public class Answer {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonBackReference
+    @JsonBackReference
     private Question question;
 
     protected Answer() {

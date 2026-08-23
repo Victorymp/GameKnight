@@ -1,5 +1,6 @@
 // src/components/game/QuestionCard.tsx
 import { Card } from "../ui/Card";
+import type { Image } from "../../models/model";
 
 const ANSWER_COLORS = ["bg-red-500", "bg-blue-500", "bg-yellow-500", "bg-green-500"];
 const ANSWER_LETTERS = ["A", "B", "C", "D"];
@@ -8,8 +9,13 @@ export type AnswerView = { id: number; text: string };
 export type QuestionView = {
   id: number;
   text: string;
-  imageData?: string;
   answers: AnswerView[];
+  images: Image[]
+};
+
+type QuestionImage = {
+  type: string;
+  content: string;
 };
 
 type Props = {
@@ -17,6 +23,7 @@ type Props = {
   counts?: Record<number, number>;
   correctAnswerId?: number | null;
   revealed?: boolean;
+  image?: QuestionImage | null;
 };
 
 export function QuestionCard({
@@ -24,24 +31,21 @@ export function QuestionCard({
   counts = {},
   correctAnswerId = null,
   revealed = false,
+  image = null,
 }: Props) {
-  const imgSrc = question.imageData
-    ? question.imageData.startsWith("data:")
-      ? question.imageData
-      : `data:image/png;base64,${question.imageData}`
+  const imgSrc = image
+    ? image.content.startsWith("data:")
+      ? image.content
+      : `data:${image.type};base64,${image.content}`
     : null;
 
   return (
     <Card>
-      <h2 className="text-3xl font-bold text-center my-6">{question.text}</h2>
+      <h2 className="text-3xl font-bold text-center my-6 text-black">{question.text}</h2>
 
       {imgSrc && (
         <div className="flex justify-center mb-6">
-          <img
-            src={imgSrc}
-            alt="Question"
-            className="max-h-64 rounded-lg"
-          />
+          <img src={imgSrc} alt="Question" className="max-h-64 rounded" />
         </div>
       )}
 

@@ -7,8 +7,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.azure.storage.blob.models.BlobStorageException;
 import com.gamesknight.answer.Answer;
 import com.gamesknight.answer.AnswerRequest;
+import com.gamesknight.image.Image;
+import com.gamesknight.image.ImageRequest;
 import com.gamesknight.question.Question;
 import com.gamesknight.question.QuestionRepository;
 import com.gamesknight.question.QuestionRequest;
@@ -16,7 +19,6 @@ import com.gamesknight.question.QuestionRequest;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -69,22 +71,45 @@ public class GameControllerApi {
         logger.info(request.getGameCode());
         logger.info("Game request");
         logger.info(request.toString());
-
-        Game newGame = new Game(request.getGameCode()).createGame();
-
+        Game newGame = new Game();
+        
+        newGame.setGameCode(request.getGameCode());
+        
         if (request.getQuestions() != null) {
             for (QuestionRequest qr : request.getQuestions()) {
                 Question question = new Question(qr.getText(), newGame);
-                question.setImageData(qr.getImagePreview());
+                
+                if (qr.getImages() != null) {
+                	for (ImageRequest ir: qr.getImages()) {
+                		
+                		question.addImage(new Image(ir, question));
+                	}
+                }
+                
+                question.setImages();
 
                 if (qr.getAnswers() != null) {
                     for (AnswerRequest ar : qr.getAnswers()) {
                         question.addAnswer(new Answer(ar.getText(), ar.isCorrect()));
                     }
                 }
-
                 newGame.addQuestion(question);
             }
+        }
+        
+        if (request.getImages() != null) {
+        	for (ImageRequest ir: request.getImages()) {
+        		Image image = new Image(ir);
+        		image.setGame(newGame);
+        		
+        		newGame.addImage(image);
+        	}
+        }
+        
+        try {        	
+        	newGame = newGame.createGame();
+        } catch (BlobStorageException b) {
+        	b.printStackTrace();
         }
         
         newGame = repository.save(newGame); // cascades: saves questions + answers too
@@ -151,7 +176,13 @@ public class GameControllerApi {
                 .orElseThrow(() -> new EntityNotFoundException("Game not found: " + gameId));
 
         Question question = new Question(request.getText(), game);
-        question.setImageData(request.getImageData());
+        if (request.getImages() != null) {
+        	for (ImageRequest ir: request.getImages()) {
+        		question.addImage(new Image(ir, question));
+        	}
+        }
+        
+        question.setImages();
 
         if (request.getAnswers() != null) {
             for (AnswerRequest answerRequest : request.getAnswers()) {
@@ -176,5 +207,15 @@ public class GameControllerApi {
         }
         List<Question> questions = questionRepository.findByGameId(gameId);
         return ResponseEntity.ok(questions);
+    }
+    
+    @GetMapping("/{id}") 
+    ResponseEntity<Game> fetchGame(@PathVariable Long id){
+    	Game g = repository.findById(id)
+    			.orElseThrow(() -> new EntityNotFoundException("Game not found: "+ id));
+    	
+    	return ResponseEntity
+	    		.status(HttpStatus.OK)
+	    		.body(g);
     }
 }

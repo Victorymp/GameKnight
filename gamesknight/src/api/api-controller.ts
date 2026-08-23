@@ -1,5 +1,5 @@
 import apiClient from "./api-client";
-import { type GameData, type GameQr, type UserData } from "../models/model";
+import type { GameData, GameQr, UserData, QuestionImage } from "../models/model";
 
 interface CreateGameRequest {
   gameCode: string;
@@ -39,7 +39,7 @@ export const createGame = (newGame: Omit<GameData, "id" | "gameQrB64">): Promise
   );
 
 export const getGameQrCode = (gameId: string): Promise<GameQr> =>
-  enqueue(() => apiClient(`/GameData/{${gameId}`).then((r) => r.data));
+  enqueue(() => apiClient(`/game/${gameId}`).then((r) => r.data));
 
 export const getAllGames = (): Promise<GameData[]> =>
   enqueue(() =>
@@ -53,6 +53,9 @@ export const getGameData = (newGame: Omit<GameData, "id" | "gameQrB64">): Promis
       .then((r) => r.data)
     );
 
+export const fetchGame = (id: number): Promise<GameData> =>
+  enqueue(() => apiClient(`/game/${id}`).then((r) => r.data))
+
 export const getUser = (): Promise<UserData> =>
   enqueue(() => apiClient(`/users/me`).then((r) => r.data));
 
@@ -63,3 +66,14 @@ export const addQuestion = (gameId: string | number, question: QuestionPayload):
       .then((r) => r.data)
   );
 
+export const fetchQuestionImage = (questionId: number): Promise<QuestionImage | null> =>
+  enqueue(() =>
+    apiClient
+      .get<QuestionImage>(`/question/${questionId}/image`)
+      .then((r)=> r.data)
+      .catch((err) => {
+      // 404 = question has no image, not an error worth logging loudly
+      if (err.response?.status === 404) return null;
+      console.error("Failed to fetch question image", err);
+      return null;
+    }));

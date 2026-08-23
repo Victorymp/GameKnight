@@ -9,7 +9,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class GameSession {
     public static final long QUESTION_DURATION_MS = 30_000L;
     public static final long REVEAL_DURATION_MS = 5_000L;
-
+    public static final long GET_READY_DURATION_MS = 5_000L;
+    
     private final String gameCode;
     private final Game game;
     private final ReentrantLock lock = new ReentrantLock();

@@ -22,7 +22,11 @@ public interface GameRepository extends JpaRepository<Game, Long> {
             "WHERE g.gameCode = :gameCode")
      Optional<Game> findByGameCodeWithQuestions(@Param("gameCode") String gameCode);
     
-    Game save(Game newGame);
+    @Query("SELECT DISTINCT g "+
+    	    "FROM Game g "+
+    	    "LEFT JOIN FETCH g.images "+
+    	    "WHERE g.gameCode = :gameCode ")
+    Optional<Game> findByGameCodeWithImages(@Param("gameCode") String gameCode);
 
 	List<Game> findAll();
 }

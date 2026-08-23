@@ -3,8 +3,15 @@ package com.gamesknight.session;
 import com.gamesknight.answer.Answer;
 import com.gamesknight.game.Game;
 import com.gamesknight.game.GameRepository;
+import com.gamesknight.image.Image;
+import com.gamesknight.image.ImageService;
 import com.gamesknight.question.Question;
 import com.gamesknight.question.QuestionRepository;
+import com.gamesknight.storage.GameKnightStorage;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+
+import io.github.cdimascio.dotenv.Dotenv;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,21 +21,34 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class GameSessionService {
     private static final Logger log = LoggerFactory.getLogger(GameSessionService.class);
 
     private final Map<String, GameSession> sessions = new ConcurrentHashMap<>();
+    
+    private final Cache<String, String> imageCache = Caffeine.newBuilder()
+    	    .maximumSize(200)          // cap at 200 images
+    	    .expireAfterAccess(1, TimeUnit.HOURS)  // drop unused ones
+    	    .build();
+    
+    private final ImageService imageService;
     private final GameRepository gameRepository;
+    private final QuestionRepository questionRepository;
     private final SimpMessagingTemplate broker;
 
-    private final QuestionRepository questionRepository;
-
-    public GameSessionService(GameRepository gameRepository, QuestionRepository questionRepository,  SimpMessagingTemplate broker) {
+    public GameSessionService(
+            GameRepository gameRepository,
+            QuestionRepository questionRepository,
+            SimpMessagingTemplate broker,
+            ImageService imageService
+    ) {
         this.gameRepository = gameRepository;
         this.questionRepository = questionRepository;
         this.broker = broker;
+        this.imageService = imageService;
     }
 
     @Transactional(readOnly = true)
@@ -43,7 +63,7 @@ public class GameSessionService {
             // Force initialization of each answer collection so it survives the closed session
             for (Question q : g.getQuestions()) {
                 org.hibernate.Hibernate.initialize(q.getAnswers());
-                // Or equivalently: q.getAnswers().size();  — but Hibernate.initialize is clearer intent
+                org.hibernate.Hibernate.initialize(q.getImages());
             }
 
             return new GameSession(g);
@@ -81,11 +101,11 @@ public class GameSessionService {
             if (!accepted) return;
 
             broadcast(gameCode, "vote:update", Map.of(
-                    "questionId", questionId,
-                    "counts", s.currentCounts(),
-                    "voterCount", s.currentVoterCount(),
-                    "playerCount", s.getPlayers().size()
-            ));
+            	    "questionId", questionId,
+            	    "counts", s.currentCounts(),
+            	    "voterCount", s.currentVoterCount(),
+            	    "playerCount", s.getPlayers().size()
+            	));
 
             if (s.allPlayersVoted()) {
                 enterReveal(s);
@@ -99,6 +119,11 @@ public class GameSessionService {
             if (!s.lock().tryLock()) continue;
             try {
                 switch (s.getPhase()) {
+                    case GET_READY -> {
+                        if (s.phaseElapsedMs() >= GameSession.GET_READY_DURATION_MS) {
+                            activateQuestion(s);
+                        }
+                    }
                     case QUESTION -> {
                         if (s.phaseElapsedMs() >= GameSession.QUESTION_DURATION_MS) {
                             enterReveal(s);
@@ -114,7 +139,7 @@ public class GameSessionService {
                             }
                         }
                     }
-                    default -> { /* no-op */ }
+                    default -> {}
                 }
             } catch (Exception e) {
                 log.error("Tick error for game {}", s.getGameCode(), e);
@@ -123,28 +148,47 @@ public class GameSessionService {
     }
 
     private void advanceToQuestion(GameSession s, int index) {
-        s.enterPhase(GamePhase.QUESTION, index);
-        Question q = s.getCurrentQuestion();
+        Question q = s.getGame().getQuestions().get(index);
         if (q == null) { enterEnded(s); return; }
 
-        Map<String, Object> questionView = new java.util.HashMap<>();
+        s.enterPhase(GamePhase.GET_READY, index);
+
+        // Small "get ready" payload — text + hasImage, no answers yet
+        Map<String, Object> questionPreview = new HashMap<>();
+        questionPreview.put("id", q.getId());
+        questionPreview.put("text", q.getText());
+        questionPreview.put("hasImage", q.getImages() != null && !q.getImages().isEmpty());
+
+        broadcast(s.getGameCode(), "question:preload", Map.of(
+            "questionIndex", index,
+            "totalQuestions", s.getGame().getQuestions().size(),
+            "phaseDurationMs", GameSession.GET_READY_DURATION_MS,
+            "question", questionPreview
+        ));
+    }
+
+    private void activateQuestion(GameSession s) {
+        s.enterPhase(GamePhase.QUESTION, s.getCurrentQuestionIndex());
+        Question q = s.getCurrentQuestion();
+
+        Map<String, Object> questionView = new HashMap<>();
         questionView.put("id", q.getId());
         questionView.put("text", q.getText());
-        questionView.put("imageData", q.getImageData());   // null-safe now
+        questionView.put("hasImage", q.getImages() != null && !q.getImages().isEmpty());
         questionView.put("answers", q.getAnswers().stream()
-                .map(a -> {
-                    Map<String, Object> answerMap = new java.util.HashMap<>();
-                    answerMap.put("id", a.getId());
-                    answerMap.put("text", a.getText());
-                    return answerMap;
-                })
-                .toList());
+            .map(a -> {
+                Map<String, Object> answerMap = new HashMap<>();
+                answerMap.put("id", a.getId());
+                answerMap.put("text", a.getText());
+                return answerMap;
+            })
+            .toList());
 
         broadcast(s.getGameCode(), "question:show", Map.of(
-                "questionIndex", index,
-                "totalQuestions", s.getGame().getQuestions().size(),
-                "phaseDurationMs", GameSession.QUESTION_DURATION_MS,
-                "question", questionView
+            "questionIndex", s.getCurrentQuestionIndex(),
+            "totalQuestions", s.getGame().getQuestions().size(),
+            "phaseDurationMs", GameSession.QUESTION_DURATION_MS,
+            "question", questionView
         ));
     }
 
@@ -181,5 +225,15 @@ public class GameSessionService {
             "/topic/game/" + gameCode,
             (Object) Map.of("type", type, "payload", payload)
         );
+    }
+    
+    public void resetGame(String gameCode) {
+        GameSession existing = sessions.remove(gameCode);
+        if (existing != null) {
+            log.info("Reset game {}: removed session with {} players in phase {}",
+                    gameCode, existing.getPlayers().size(), existing.getPhase());
+        }
+        // Broadcast reset so any connected clients wipe their local state
+        broadcast(gameCode, "game:reset", Map.of("gameCode", gameCode));
     }
 }

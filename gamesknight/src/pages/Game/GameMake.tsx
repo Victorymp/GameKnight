@@ -4,9 +4,8 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Screen, Header } from "../../components/ui/Screen";
 import SideBar from "../../components/ui/SideBar";
-import { type Question, type Answer } from "../../models/model";
-import type { GameData } from "../../models/model";
-import { createGame, addQuestion } from "../../api/api-controller";
+import type { Question, Answer, Image, GameData } from "../../models/model";
+import { createGame } from "../../api/api-controller";
 
 const MAX_ANSWERS = 4;
 
@@ -19,6 +18,7 @@ function newQuestion(): Question {
     id: generateUuidFallback(),
     text: "",
     answers: [newAnswer(), newAnswer()],
+    images: [],
   };
 }
 
@@ -37,12 +37,18 @@ function generateUuidFallback(): string {
 }
 
 function generateGameCode(): string {
-  // 6-digit numeric code — short and easy to type/QR
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Extract MIME type and pure base64 from a data URL like "data:image/png;base64,iVBOR..."
+function parseDataUrl(dataUrl: string): { type: string; content: string } {
+  const match = dataUrl.match(/^data:(.+?);base64,(.+)$/);
+  if (!match) return { type: "image/png", content: dataUrl };
+  return { type: match[1], content: match[2] };
+}
+
 export default function GameMake() {
-  const [gameTitle, setGameTitle] = useState(""); // not yet persisted — see note below
+  const [gameTitle, setGameTitle] = useState("");
   const [questions, setQuestions] = useState<Question[]>([newQuestion()]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +72,7 @@ export default function GameMake() {
     if (!file) {
       setQuestions((qs) =>
         qs.map((q) =>
-          q.id === questionId ? { ...q, imagePreview: undefined } : q
+          q.id === questionId ? { ...q, images: [] } : q
         )
       );
       return;
@@ -75,9 +81,20 @@ export default function GameMake() {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
+      const { type, content } = parseDataUrl(dataUrl);
+
+      const image: Image = {
+        isThumbnails: false,
+        isPrimary: true,
+        type,
+        category: "IMAGE",
+        title: file.name,
+        content,
+      };
+
       setQuestions((qs) =>
         qs.map((q) =>
-          q.id === questionId ? { ...q, imagePreview: dataUrl } : q
+          q.id === questionId ? { ...q, images: [image] } : q
         )
       );
     };
@@ -157,32 +174,18 @@ export default function GameMake() {
     setIsSaving(true);
     try {
       const code = generateGameCode();
-      
+
       const newGame: Omit<GameData, "id" | "gameQrB64"> = {
         gameCode: code,
         questions,
+        images: [],  // game-level images (none for now)
       };
-
-      console.log(newGame);
 
       const game = await createGame(newGame);
 
       if (!game?.id) {
         throw new Error("Game creation did not return an id");
       }
-
-      await Promise.all(
-        questions.map((q) =>
-          addQuestion(game.id, {
-            text: q.text,
-            imageData: q.imagePreview,
-            answers: q.answers.map((a) => ({
-              text: a.text,
-              correct: a.correct,
-            })),
-          })
-        )
-      );
 
       setCreatedGame(game);
     } catch (err) {
@@ -201,10 +204,8 @@ export default function GameMake() {
   }
 
   if (createdGame) {
-    const qrSrc = createdGame.gameQrB64
-      ? createdGame.gameQrB64.startsWith("data:")
-        ? createdGame.gameQrB64
-        : `data:image/png;base64,${createdGame.gameQrB64}`
+    const qrSrc = createdGame.qrImageBase64
+      ? `data:image/png;base64,${createdGame.qrImageBase64}`
       : undefined;
 
     return (
@@ -225,11 +226,18 @@ export default function GameMake() {
     );
   }
 
+  // Helper to build image preview URL from stored Image
+  function imagePreview(img: Image): string {
+    return img.content.startsWith("data:")
+      ? img.content
+      : `data:${img.type};base64,${img.content}`;
+  }
+
   return (
     <Screen>
-      <Header/>
+      <Header />
       <div className="flex flex-1">
-        <SideBar/>
+        <SideBar />
         <div className="flex flex-col gap-4 p-4 max-w-2xl mx-auto">
           <Card className="flex flex-col gap-2 p-4">
             <p className="font-semibold">Quiz Title</p>
@@ -268,9 +276,9 @@ export default function GameMake() {
                     handleImageChange(question.id, e.target.files?.[0] ?? null)
                   }
                 />
-                {question.imagePreview && (
+                {question.images && question.images.length > 0 && (
                   <img
-                    src={question.imagePreview}
+                    src={imagePreview(question.images[0])}
                     alt="Question"
                     className="max-h-40 rounded border"
                   />

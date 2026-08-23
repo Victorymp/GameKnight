@@ -38,14 +38,14 @@ public class GameController {
             return message;
         }
 
-        String type = root.path("type").asText();
+        String type = root.path("type").asString();
         JsonNode payload = root.path("payload");
         log.info("Parsed type='{}', payload={}", type, payload);
 
         if ("game:join".equals(type)) {
-            String gameCode = payload.path("gameCode").asText(null);
-            String playerId = payload.path("id").asText(null);
-            String displayName = payload.path("displayName").asText(null);
+            String gameCode = payload.path("gameCode").asString();
+            String playerId = payload.path("id").asString();
+            String displayName = payload.path("displayName").asString();
 
             log.info("game:join -> gameCode='{}', playerId='{}', displayName='{}'",
                     gameCode, playerId, displayName);

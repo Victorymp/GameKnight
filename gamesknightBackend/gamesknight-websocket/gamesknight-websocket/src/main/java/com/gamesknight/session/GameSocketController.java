@@ -2,6 +2,7 @@ package com.gamesknight.session;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -59,7 +60,14 @@ public class GameSocketController {
 
     @MessageMapping("/game/{gameCode}/start")
     public void start(@DestinationVariable String gameCode) {
+    	log.info("START received for gameCode={}", gameCode);
         sessionService.startGame(gameCode);
+    }
+    
+    @MessageMapping("/game/{gameCode}/reset")
+    public void reset(@DestinationVariable String gameCode) {
+        log.info("RESET received for gameCode={}", gameCode);
+        sessionService.resetGame(gameCode);
     }
 
     @MessageMapping("/game/{gameCode}/vote")
@@ -70,7 +78,7 @@ public class GameSocketController {
         sessionService.submitVote(gameCode, playerId, questionId, answerId);
     }
 
-    private org.springframework.messaging.MessageHeaders createHeaders(String sessionId) {
+    private MessageHeaders createHeaders(String sessionId) {
         SimpMessageHeaderAccessor headerAccessor =
                 SimpMessageHeaderAccessor.create(org.springframework.messaging.simp.SimpMessageType.MESSAGE);
         headerAccessor.setSessionId(sessionId);
