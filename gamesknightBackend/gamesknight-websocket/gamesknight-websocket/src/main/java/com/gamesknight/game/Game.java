@@ -39,6 +39,7 @@ public class Game {
 
     private String gameCode;
     private String gameQrB64;
+    private String gameTitle;
     @Transient
     private String qrImageBase64;
 
@@ -91,7 +92,15 @@ public class Game {
         this.gameQrB64 = gameQrB64;
     }
 
-    public List<Question> getQuestions() {
+    public String getGameTitle() {
+		return gameTitle;
+	}
+
+	public void setGameTitle(String gameTitle) {
+		this.gameTitle = gameTitle;
+	}
+
+	public List<Question> getQuestions() {
         return questions;
     }
 
@@ -106,11 +115,19 @@ public class Game {
     }
     
     public void setImages() {
-    	if (images.size() > 0) images = new GameKnightStorage().setImage(this.images);
+        if (images != null && !images.isEmpty()) {
+            new GameKnightStorage().setImage(images);
+        }
     }
     
-    public void setImages(List<Image> imageImport) {
-    	if (imageImport.size() > 0) this.images = new GameKnightStorage().setImage(imageImport);
+    public void setImages(List<Image> images) {
+        this.images = images;
+    }
+    
+    public void loadImageContent() {
+        if (images != null && !images.isEmpty()) {
+            new GameKnightStorage().setImage(images);
+        }
     }
     
     public List<Image> getImages() {

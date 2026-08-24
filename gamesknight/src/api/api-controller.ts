@@ -1,5 +1,5 @@
 import apiClient from "./api-client";
-import type { GameData, GameQr, UserData, QuestionImage } from "../models/model";
+import type { GameData, GameQr, UserData, QuestionImage, Image } from "../models/model";
 
 interface CreateGameRequest {
   gameCode: string;
@@ -65,6 +65,12 @@ export const addQuestion = (gameId: string | number, question: QuestionPayload):
       .post(`/game/${gameId}/questions`, question)
       .then((r) => r.data)
   );
+
+export const fetchImage = (imageId: number): Promise<Image> =>
+  enqueue(() =>
+    apiClient
+      .get<Image>(`/image/${imageId}`)
+      .then((r)=> r.data))
 
 export const fetchQuestionImage = (questionId: number): Promise<QuestionImage | null> =>
   enqueue(() =>

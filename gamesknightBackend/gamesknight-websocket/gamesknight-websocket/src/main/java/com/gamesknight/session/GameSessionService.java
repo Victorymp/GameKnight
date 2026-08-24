@@ -99,6 +99,30 @@ public class GameSessionService {
 
             boolean accepted = s.recordVote(playerId, questionId, answerId);
             if (!accepted) return;
+            
+            Answer selectedAnswer = q.getAnswers().stream()
+                    .filter(a -> a.getId() == answerId)
+                    .findFirst()
+                    .orElse(null);
+           
+            if (selectedAnswer != null && selectedAnswer.isCorrect()) {
+
+                long elapsedMs = s.phaseElapsedMs();
+
+                int score = s.calculateScore(
+                        100, // base score
+                        elapsedMs,
+                        GameSession.QUESTION_DURATION_MS
+                );
+
+                s.addScore(playerId, score);
+
+                log.info("Player {} scored {} points in game {}", playerId,score,gameCode);
+            }
+            
+            broadcast(gameCode, "leaderboard:update", Map.of(
+            	    "players", leaderboardPayload(s)
+            	));
 
             broadcast(gameCode, "vote:update", Map.of(
             	    "questionId", questionId,
@@ -225,6 +249,35 @@ public class GameSessionService {
             "/topic/game/" + gameCode,
             (Object) Map.of("type", type, "payload", payload)
         );
+    }
+    
+    private List<Map<String, Object>> leaderboardPayload(GameSession s) {
+
+        List<Map<String, Object>> leaderboard = s.getPlayers().entrySet().stream()
+                .map(entry -> {
+                    String playerId = entry.getKey();
+
+                    return Map.<String, Object>of(
+                            "id", playerId,
+                            "name", entry.getValue(),
+                            "score", s.getScore(playerId)
+                    );
+                })
+                .sorted(Comparator.comparingInt(
+                        (Map<String, Object> player) ->
+                                (Integer) player.get("score")
+                ).reversed())
+                .toList();
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (int i = 0; i < leaderboard.size(); i++) {
+            Map<String, Object> player = new HashMap<>(leaderboard.get(i));
+            player.put("rank", i + 1);
+            result.add(player);
+        }
+
+        return result;
     }
     
     public void resetGame(String gameCode) {

@@ -5,6 +5,7 @@ export interface UserData {
 export interface Player{
   displayName: string;
   id: string;
+  score: number;
 }
 
 export interface GameQr{
@@ -16,6 +17,7 @@ export interface GameQr{
 export interface GameData extends GameQr{
   // Game id is th Id of the running game
   id: number;
+  gameTitle: string;
   questions: Question[];
   qrImageBase64?: string;
   images: Image[];
@@ -42,6 +44,9 @@ export interface Image {
   title: string;
   content: string;
   path?: string;
+  gameId?: string;
+  questionId?: string;
+  id?: number;
 }
 
 

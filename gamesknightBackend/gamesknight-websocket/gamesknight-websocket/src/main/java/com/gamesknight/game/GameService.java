@@ -3,10 +3,12 @@ package com.gamesknight.game;
 import java.util.List;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.stereotype.Service;
 
 import com.gamesknight.image.Image;
 import com.gamesknight.image.ImageRepository;
+import com.gamesknight.image.ImageService;
 import com.gamesknight.question.QuestionRepository;
 
 import jakarta.transaction.Transactional;
@@ -17,11 +19,13 @@ public class GameService {
     private final GameRepository gameRepository;
     private final QuestionRepository questionRepository;
     private final ImageRepository imageRepository;
+    private ImageService imageService;
 
-    public GameService(GameRepository gameRepository, QuestionRepository questionRepository, ImageRepository imageRepository) {
+    public GameService(GameRepository gameRepository, QuestionRepository questionRepository, ImageRepository imageRepository,ImageService imageService) {
         this.gameRepository = gameRepository;
         this.questionRepository = questionRepository;
         this.imageRepository = imageRepository;
+        this.imageService = imageService;
     }
 
     @Transactional
@@ -30,11 +34,14 @@ public class GameService {
 		try {
 			game = gameRepository.findByGameCodeWithQuestions(gameCode)
 		            .orElseThrow(() -> new NotFoundException());
-
-		    Game gameWithImages = gameRepository.findByGameCodeWithImages(gameCode)
-		            .orElseThrow(() -> new NotFoundException());
-
-		    game.setImages(gameWithImages.getImages());
+			
+			List<Image> images = imageRepository.findByGameId(game.getId());
+			
+			for (Image i: images) {
+				game.addImage(i);
+			}
+			
+//			game.setImages(images);
 		} catch (NotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

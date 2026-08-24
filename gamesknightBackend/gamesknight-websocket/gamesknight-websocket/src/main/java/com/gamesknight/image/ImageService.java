@@ -61,7 +61,7 @@ public class ImageService {
         if (path != null) imageCache.remove(path);
     }
 
-    private String getCachedImageBase64(String path) {
+    public String getCachedImageBase64(String path) {
         return imageCache.computeIfAbsent(path, p -> {
             try {
                 byte[] bytes = storage.getImage(p, IMAGE_CONTAINER);
@@ -73,4 +73,15 @@ public class ImageService {
             }
         });
     }
+    
+    public byte[] getImageBytes(String path) {
+            try {
+                byte[] bytes = storage.getImage(path, IMAGE_CONTAINER);
+                if (bytes == null) return null;
+                return bytes;
+            } catch (Exception e) {
+                log.error("Failed to fetch image {}", path, e);
+                return null;
+            }
+    	}
 }

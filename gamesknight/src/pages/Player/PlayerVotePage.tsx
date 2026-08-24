@@ -38,6 +38,18 @@ export default function PlayerVotePage() {
   const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
   const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(null);
 
+  function addScore(score: number) {
+  if (!gameCode || !playerId) return;
+
+  gameController.send({
+    destination: `/app/game/${gameCode}/score`,
+    body: {
+      playerId,
+      score,
+    },
+  });
+}
+
   
 
   useEffect(() => {
@@ -101,6 +113,14 @@ export default function PlayerVotePage() {
         <div className="m-auto text-center">
           <div className="text-2xl">Waiting for the game to start...</div>
         </div>
+      )}
+      {(phase === "get_ready") && question && (
+        <>
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="text-2xl mb-4">Get ready...</div>
+          <h2 className="text-3xl font-bold text-center">{question.text}</h2>
+        </div>
+        </>
       )}
 
       {(phase === "voting" || phase === "voted" || phase === "reveal") && question && (

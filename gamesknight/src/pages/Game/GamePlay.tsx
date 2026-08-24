@@ -6,6 +6,7 @@ import playerController from "../../components/controllers/player-controller";
 import { Timer } from "../../components/ui/Timer";
 import { QuestionCard } from "../../components/ui/QuestionCard";
 import { fetchQuestionImage } from "../../api/api-controller";
+import Leaderboard from "../../components/ui/Leaderboard";
 
 type Phase = "lobby" | "get_ready" | "question" | "reveal" | "ended";
 
@@ -73,7 +74,13 @@ export default function GamePlay() {
       off = subscribeToGame(game.gameCode, (msg) => {
         switch (msg?.type) {
           case "player:list":
-            setPlayers(msg.payload.players ?? []);
+            playerController.setPlayers(
+              (msg.payload?.players ?? []).map((player: { id: string; name?: string; displayName?: string; score?: number }) => ({
+                id: player.id,
+                displayName: player.displayName ?? player.name ?? "Player",
+                score: player.score ?? 0,
+              })),
+            );
             break;
           case "question:preload":
             setQuestion(msg.payload.question);
@@ -141,6 +148,9 @@ export default function GamePlay() {
         <div className="text-right">
           <div className="text-sm opacity-70">Players</div>
           <div className="text-3xl font-bold">{players.length}</div>
+          <div><Leaderboard
+           players={players}
+          /></div>
         </div>
       </header>
 
@@ -154,11 +164,11 @@ export default function GamePlay() {
               className="mx-auto w-64 h-64 rounded-lg bg-white p-2"
             />
           )}
-          <ul className="my-6 space-y-1">
+          {/*<ul className="my-6 space-y-1">
             {players.map((p) => (
               <li key={p.id} className="text-lg">{p.displayName}</li>
             ))}
-          </ul>
+          </ul>*/}
           <button
             onClick={startGame}
             disabled={players.length === 0}

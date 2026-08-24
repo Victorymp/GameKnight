@@ -53,6 +53,7 @@ export default function GameMake() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdGame, setCreatedGame] = useState<GameData | null>(null);
+  const [gameImage, setGameImage] = useState<Image | null>(null);
 
   function addQuestionCard() {
     setQuestions((qs) => [...qs, newQuestion()]);
@@ -98,6 +99,36 @@ export default function GameMake() {
         )
       );
     };
+    reader.readAsDataURL(file);
+  }
+
+  function handleImageGameChange(
+    file: File | null,
+    imageCategory: string
+  ) {
+    if (!file) {
+      setGameImage(null);
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const { type, content } = parseDataUrl(dataUrl);
+
+      const image: Image = {
+        isThumbnails: false,
+        isPrimary: true,
+        type,
+        category: imageCategory,
+        title: file.name,
+        content,
+      };
+
+      setGameImage(image);
+    };
+
     reader.readAsDataURL(file);
   }
 
@@ -178,7 +209,8 @@ export default function GameMake() {
       const newGame: Omit<GameData, "id" | "gameQrB64"> = {
         gameCode: code,
         questions,
-        images: [],  // game-level images (none for now)
+        gameTitle,
+        images: gameImage ? [gameImage] : [],
       };
 
       const game = await createGame(newGame);
@@ -241,11 +273,33 @@ export default function GameMake() {
         <div className="flex flex-col gap-4 p-4 max-w-2xl mx-auto">
           <Card className="flex flex-col gap-2 p-4">
             <p className="font-semibold">Quiz Title</p>
+
             <Input
               value={gameTitle}
               onChange={(e) => setGameTitle(e.target.value)}
               placeholder="Enter quiz title"
             />
+
+            <div className="flex flex-col gap-2">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) =>
+                  handleImageGameChange(
+                    e.target.files?.[0] ?? null,
+                    "IMAGE"
+                  )
+                }
+              />
+
+              {gameImage && (
+                <img
+                  src={imagePreview(gameImage)}
+                  alt="Quiz"
+                  className="max-h-40 rounded border"
+                />
+              )}
+            </div>
           </Card>
 
           {questions.map((question, qIndex) => (

@@ -8,18 +8,18 @@ import playerController from "../../components/controllers/player-controller";
 import SideBar from "../../components/ui/SideBar";
 import { fetchGame, getGameData } from "../../api/api-controller";
 import { useParams, useNavigate } from "react-router-dom";
-import { onGameSocketMessage } from "../../websocket/websocket-controller";
 import { connectWebSocket, sendGameSocketMessage, subscribeToGame } from "../../websocket/websocket";
+import { ImageView } from "../../components/ui/ImageView";
 
 export default function GameLobby() {
   const { gameId } = useParams<{ gameId: string }>();
   const [game, setGame] = useState<GameData | null>(null);
-  const [gameCodeQr, setGameCodeQr] = useState<string | undefined>();
+  const [, setGameCodeQr] = useState<string | undefined>();
   const [gameCode, setGameCode] = useState<string>();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  const [players, setPlayers] = useState<Player[]>(playerController.getPlayers());
-  const [thumbnail, setThumbnail] = useState<Image | null>(null);
+  const [, setIsLoading] = useState(false);
+  const [, setError] = useState<string | undefined>();
+  const [, setPlayers] = useState<Player[]>(playerController.getPlayers());
+  const [, setThumbnail] = useState<Image | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -89,6 +89,7 @@ export default function GameLobby() {
     if (!gameId) return;
     const getGame: Omit<GameData, "id" | "gameQrB64"> = {
         gameCode: gameId ?? "",
+        gameTitle: "",
         questions: [],
         images: []
       };
@@ -103,39 +104,48 @@ export default function GameLobby() {
     if (!thumbnail_primary) return;
     setThumbnail(thumbnail_primary);
 
+    
+
   }, [gameId]);
 
-  async function prepareGame() {
-    console.log(`Game chosen: ${gameId}`);
-    if (!gameId) {
-      setError("Please enter a game code before starting.");
-      return;
-    }
+  useEffect(() => {
 
-    setError(undefined);
-    setIsLoading(true);
-    try {
-      const started = await gameController.startGame(gameId);
-      let b64: string  = started?.gameQrB64 as string;
-      if (!b64){
-        b64 = `${started?.qrImageBase64 ?? ""}` as string;
+    async function prepareGame() {
+      console.log(`Game chosen: ${gameId}`);
+      if (!gameId) {
+        setError("Please enter a game code before starting.");
+        return;
       }
-      setGameCode(started?.gameCode);
-      console.log(typeof b64);
-      if (b64 && typeof b64 === "string") {
-        const src = b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
-        setGameCodeQr(src);
-      } else {
+
+      setError(undefined);
+      setIsLoading(true);
+      try {
+        const started = await gameController.startGame(gameId);
+        let b64: string  = started?.gameQrB64 as string;
+        if (!b64){
+          b64 = `${started?.qrImageBase64 ?? ""}` as string;
+        }
+        setGameCode(started?.gameCode);
+        if (b64 && typeof b64 === "string") {
+          const src = b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
+          setGameCodeQr(src);
+        } else {
+          setGameCodeQr(undefined);
+          setError("No QR available for this game.");
+        }
+      } catch (err) {
+        setError("Failed to create game.");
         setGameCodeQr(undefined);
-        setError("No QR available for this game.");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      setError("Failed to create game.");
-      setGameCodeQr(undefined);
-    } finally {
-      setIsLoading(false);
     }
-  }
+    prepareGame();
+
+    return () => {  true };
+  }, [])
+
+
 
   function beginGame() {
     if (!gameCode) {
@@ -159,45 +169,22 @@ export default function GameLobby() {
           <main>
             <div className="flex flex-1 gap-2 py-3 px-3">
               <Card>
-                <div className="flex flex-col gap-2">
-                  <p>{gameId}</p>
-                  { !gameCodeQr ? (
-                  <Button onClick={prepareGame}>
-                    Start Game
-                  </Button>
-                  ):(
-                  <Button onClick={beginGame}>
-                    Begin Game 
-                  </Button>
-                  )}
-                </div>
-              </Card>
-            </div>
-            <div className="flex flex-1 gap-2 py-3 px-3">
-              <Card>
-                {isLoading ? (
-                  <div><span>Loading QR...</span></div>
-                ) : error ? (
-                  <div><span>{error}</span></div>
-                ) : gameCodeQr ? (
-                  <div>
-                    <img src={thumbnail?.content} alt={thumbnail?.title} />
-                    <span>Has code: {gameCode}</span>
+                <div className="flex flex-col gap-2 items-center">
+                {game && game.images?.length > 0 && (
+                  <div className="border">
+                    <ImageView
+                      imageId={game.images[0].id ?? 0}
+                      title={game.images[0].title ?? ""}
+                    />
                   </div>
-                ) : (
-                  <div><span>No code</span></div>
                 )}
-              </Card>
-            </div>
-            <div className="flex flex-1 gap-2 py-3 px-3">
-              <Card>
-                <div className="flex flex-col gap-2">
-                  <span className="font-semibold">Players joined: {players.length}</span>
-                  <ul>
-                    {players.map((player) => (
-                      <li key={player.id}>{player.displayName}</li>
-                    ))}
-                  </ul>
+                  <div className="flex flex-col items-center">
+                    <p>{game?.gameTitle}</p>
+                    <a/>
+                    <Button onClick={beginGame} className="w-55">
+                      Start Game 
+                    </Button>
+                  </div>
                 </div>
               </Card>
             </div>

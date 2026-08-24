@@ -25,6 +25,8 @@ public class GameSession {
     private final Map<Long, Map<Long, Integer>> counts = new HashMap<>();
     // questionId -> set of playerIds who have voted
     private final Map<Long, Set<String>> voters = new HashMap<>();
+    
+    private final Map<String, Integer> scores = new HashMap<>();
 
     public GameSession(Game game) {
         this.gameCode = game.getGameCode();
@@ -59,6 +61,15 @@ public class GameSession {
 
     public void addPlayer(String playerId, String name) {
         players.put(playerId, name);
+        scores.put(playerId, 0);
+    }
+    
+    public void addScore(String playerId, int points) {
+        scores.merge(playerId, points, Integer::sum);
+    }
+    
+    public int getScore(String playerId) {
+        return scores.getOrDefault(playerId, 0);
     }
 
     public void enterPhase(GamePhase newPhase, int questionIndex) {
@@ -73,6 +84,16 @@ public class GameSession {
         Map<Long, Integer> byAnswer = counts.computeIfAbsent(questionId, k -> new HashMap<>());
         byAnswer.merge(answerId, 1, Integer::sum);
         return true;
+    }
+    
+    public int calculateScore(int baseScore, long elapsedMs, long questionTimeMs) {
+
+        double multiplier = 1.0 - ((double) elapsedMs / questionTimeMs);
+
+        // Keep multiplier between 0 and 1
+        multiplier = Math.max(0.0, Math.min(1.0, multiplier));
+
+        return (int) Math.round(baseScore * multiplier);
     }
 
     public boolean allPlayersVoted() {

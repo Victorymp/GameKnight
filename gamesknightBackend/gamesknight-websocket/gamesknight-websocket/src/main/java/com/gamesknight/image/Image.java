@@ -32,7 +32,8 @@ public class Image {
 	private String content;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id", nullable = true)
+	@JoinColumn(name = "game_id", nullable = false)
+	@JsonBackReference
 	private Game game;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
@@ -76,6 +77,14 @@ public class Image {
 	
 	public Game getGame() {
 		return game;
+	}
+	
+	public void setId(Long id) {
+		this.id = id;
+	}
+	
+	public Long getId() {
+		return this.id;
 	}
 	
 	public void setGame(Game game) {
@@ -139,6 +148,5 @@ public class Image {
 	}
 	public void setCategory(String category) { 
 		this.category = category; 
-	}
-	  
+	}	  
 }

@@ -12,6 +12,7 @@ import com.gamesknight.answer.Answer;
 import com.gamesknight.answer.AnswerRequest;
 import com.gamesknight.image.Image;
 import com.gamesknight.image.ImageRequest;
+import com.gamesknight.image.ImageService;
 import com.gamesknight.question.Question;
 import com.gamesknight.question.QuestionRepository;
 import com.gamesknight.question.QuestionRequest;
@@ -19,6 +20,7 @@ import com.gamesknight.question.QuestionRequest;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -35,16 +37,19 @@ public class GameControllerApi {
     private final QuestionRepository questionRepository;
     
     private GameService gameService;
+    
+    private ImageService imageService;
 
     private final GameModelAssembler assembler;
 
     private static final Logger logger = LoggerFactory.getLogger(GameControllerApi.class);
 
-    public GameControllerApi(GameRepository repository, QuestionRepository questionRepository, GameModelAssembler assembler, GameService gameservice) {
+    public GameControllerApi(GameRepository repository, QuestionRepository questionRepository, GameModelAssembler assembler, GameService gameservice, ImageService imageService) {
         this.repository = repository;
         this.questionRepository = questionRepository;
         this.assembler = assembler;
         this.gameService = gameservice;
+        this.imageService = imageService;
     }
 
     @Transactional
@@ -99,6 +104,7 @@ public class GameControllerApi {
         
         if (request.getImages() != null) {
         	for (ImageRequest ir: request.getImages()) {
+        		logger.info("Adding image");
         		Image image = new Image(ir);
         		image.setGame(newGame);
         		
@@ -164,9 +170,23 @@ public class GameControllerApi {
 
     @GetMapping("/all")
     CollectionModel<EntityModel<Game>> all() {
+
         List<EntityModel<Game>> games = repository.findAll().stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
+
+        for (EntityModel<Game> eg : games) {
+            Game g = eg.getContent();
+            if (g != null && g.getImages() != null && !g.getImages().isEmpty()) {
+            	for (Image i : g.getImages()) {
+            	    if (i.isThumbnails() || i.isPrimary()) {
+            	        i.setContent(
+            	            imageService.getCachedImageBase64(i.getPath())
+            	        );
+            	    }
+            	}
+            }
+        }
         return CollectionModel.of(games);
     }
 
