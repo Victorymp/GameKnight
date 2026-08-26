@@ -4,13 +4,16 @@ import gameController from "../../components/controllers/game-controller";
 import { subscribeToGame, connectWebSocket } from "../../websocket/websocket";
 import type { PlayerQuestion } from "../../models/model";
 import { useNavigate } from "react-router-dom";
+import Leaderboard from "../../components/ui/Leaderboard";
+import playerController from "../../components/controllers/player-controller";
+import LobbyLeaderboard from "../../components/ui/LobbyLeaderboard";
 
 const ANSWER_COLORS = ["bg-red-500", "bg-blue-500", "bg-yellow-500", "bg-green-500"];
 const ANSWER_LETTERS = ["A", "B", "C", "D"];
 
 type Phase = "waiting" | "get_ready" | "voting" | "voted" | "reveal" | "ended";
 
-function getStoredPlayer(gameCode: string): { playerId: string; displayName: string } | null {
+function getStoredPlayer(gameCode: string): { playerId: string; name: string } | null {
   const raw = sessionStorage.getItem(`player:${gameCode}`);
   if (!raw) return null;
   try {
@@ -23,7 +26,7 @@ function getStoredPlayer(gameCode: string): { playerId: string; displayName: str
 }
 
 export default function PlayerVotePage() {
-  const game = gameController.getGame();
+  // const game = gameController.getGame();
   const { gameCode } = useParams<{ gameCode: string }>();
 
   const navigate = useNavigate();
@@ -38,18 +41,6 @@ export default function PlayerVotePage() {
   const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
   const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(null);
 
-  function addScore(score: number) {
-  if (!gameCode || !playerId) return;
-
-  gameController.send({
-    destination: `/app/game/${gameCode}/score`,
-    body: {
-      playerId,
-      score,
-    },
-  });
-}
-
   
 
   useEffect(() => {
@@ -58,13 +49,30 @@ export default function PlayerVotePage() {
     let off: (() => void) | undefined;
     connectWebSocket().then(() => {
       off = subscribeToGame(gameCode, (msg) => {
+        console.log(`Message Type: ${msg?.type}`)
         switch (msg?.type) {
+          case "player:list":
+            playerController.setPlayers(
+              (msg.payload?.players ?? []).map((player: { id: string; name?: string; score?: number, rank?: number }) => ({
+                id: player.id,
+                name: player.name ?? "Player",
+                score: player.score ?? 0,
+                rank: player.rank ?? 0
+              })),
+            );
+            console.log(`Player list: ${playerController.getPlayers()}`)
+            break;
           case "question:show":
             setQuestion(msg.payload.question);
             setSelectedAnswerId(null);
             setCorrectAnswerId(null);
             setPhase("voting");
             break;
+          case "leaderboard:update":
+            if (msg.payload.players) {
+                playerController.setPlayers(msg.payload.players);
+              }
+            break
           case "question:preload":
             setQuestion(msg.payload.question);
             setSelectedAnswerId(null);
@@ -73,6 +81,9 @@ export default function PlayerVotePage() {
             break;
           case "question:reveal":
             setCorrectAnswerId(msg.payload.correctAnswerId);
+            if (msg.payload.players) {
+                playerController.setPlayers(msg.payload.players);
+              }
             setPhase("reveal");
             break;
           case "game:end":
@@ -112,6 +123,7 @@ export default function PlayerVotePage() {
       {phase === "waiting" && (
         <div className="m-auto text-center">
           <div className="text-2xl">Waiting for the game to start...</div>
+          <LobbyLeaderboard players={playerController.getPlayers()} currentPlayerId={playerId} />
         </div>
       )}
       {(phase === "get_ready") && question && (
@@ -119,6 +131,9 @@ export default function PlayerVotePage() {
         <div className="flex flex-col items-center justify-center h-full">
           <div className="text-2xl mb-4">Get ready...</div>
           <h2 className="text-3xl font-bold text-center">{question.text}</h2>
+          <Leaderboard 
+            players={playerController.getPlayers()} currentPlayerId={playerId}
+          />
         </div>
         </>
       )}

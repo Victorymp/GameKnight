@@ -1,6 +1,7 @@
 package com.gamesknight.image;
 
 import java.util.Base64;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -36,12 +37,13 @@ public class ImageService {
     public void hydrateImages(Question q) {
         if (q.getImages() == null || q.getImages().isEmpty()) return;
         for (Image img : q.getImages()) {
-            if (img.getPath() == null || img.getPath().isEmpty()) continue;
-            if (img.getContent() != null && !img.getContent().isEmpty()) continue; // already hydrated
-            String cached = getCachedImageBase64(img.getPath());
-            if (cached != null) {
-                img.setContent(cached);
+            if (img.getBlobName() == null || img.getBlobName().isEmpty()) {
+                log.warn("Image {} has no path, skipping hydration", img.getId());
+                continue;
             }
+            if (img.getContent() != null && !img.getContent().isEmpty()) continue;
+            String cached = getCachedImageBase64(img.getBlobName());
+            if (cached != null) img.setContent(cached);
         }
     }
 
@@ -84,4 +86,9 @@ public class ImageService {
                 return null;
             }
     	}
+
+    public List<Image> uploadImages(List<Image> images) {
+        if (images == null || images.isEmpty()) return List.of();
+        return storage.setImage(images);
+    }
 }

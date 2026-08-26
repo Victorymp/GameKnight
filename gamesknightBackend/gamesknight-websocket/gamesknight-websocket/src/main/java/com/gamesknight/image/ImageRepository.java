@@ -9,10 +9,13 @@ import org.springframework.data.repository.query.Param;
 
 public interface ImageRepository extends JpaRepository<Image, Long> {
 	
-	  Optional<Image> findById(Long id);
-
-	  List<Image> findByGameId(Long gameId);
-	  
+		Optional<Image> findById(Long id);
+		
+		List<Image> findByGameId(Long gameId);
+		
+		List<Image> findByGameIdAndCategory(Long gameId, String category);
+		
+		Optional<Image> findFirstByGameIdAndCategory(Long gameId, String category);
 }
 
 

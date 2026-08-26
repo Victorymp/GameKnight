@@ -3,8 +3,10 @@ package com.gamesknight.image;
 import java.nio.charset.StandardCharsets;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.gamesknight.album.Album;
 import com.gamesknight.game.Game;
 import com.gamesknight.question.Question;
+import com.gamesknight.storage.GameKnightStorage;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,20 +29,25 @@ public class Image {
 	private String type;
 	private String path;
 	private String category;	
+	private String blobName;
 
 	@Transient
 	private String content;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "game_id", nullable = false)
-	@JsonBackReference
+	@JoinColumn(name = "game_id", nullable = true)
+	@JsonBackReference("game-images")
 	private Game game;
-	
+
 	@ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "question_id", nullable = true)
-    @JsonBackReference
-    private Question question;
-	
+	@JoinColumn(name = "question_id", nullable = true)
+	@JsonBackReference("question-images")
+	private Question question;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "album_id", nullable = true)
+	@JsonBackReference("album-images")
+	private Album album;
 
 	public Image() {
 		
@@ -57,22 +64,33 @@ public class Image {
 	}
 	
 	public Image(ImageRequest request) {
-	    this.isThumbnails = request.isThumbnails();
-	    this.isPrimary = request.isPrimary();
-	    this.title = request.getTitle();
-	    this.content = request.getContent();
-	    this.type = request.getType();
-	    this.path = request.getPath();
+		initalize(request);
 	}
 	
 	public Image(ImageRequest request, Question question) {
-	    this.isThumbnails = request.isThumbnails();
+		initalize(request);
+	    this.question = question;
+	}
+	
+	public Image(ImageRequest request, Game game) {
+		initalize(request);
+	    this.game = game;
+	}
+	
+	public Image(ImageRequest request, Album album) {
+		initalize(request);
+	    this.album = album;
+	}
+	
+	public void initalize(ImageRequest request) {
+		this.isThumbnails = request.isThumbnails();
 	    this.isPrimary = request.isPrimary();
 	    this.title = request.getTitle();
 	    this.content = request.getContent();
 	    this.type = request.getType();
 	    this.path = request.getPath();
-	    this.question = question;
+	    this.category = request.getCategory();
+	    this.blobName = new GameKnightStorage().generateBlobName(request.getType());
 	}
 	
 	public Game getGame() {
@@ -97,6 +115,9 @@ public class Image {
 	public void setQuestion(Question question) {
 		this.question = question;
 	}
+	
+	public Album getAlbum() { return album; }
+	public void setAlbum(Album album) { this.album = album; }
 
 	public boolean isThumbnails() {
 		return isThumbnails;
@@ -148,5 +169,13 @@ public class Image {
 	}
 	public void setCategory(String category) { 
 		this.category = category; 
+	}
+
+	public String getBlobName() {
+		return blobName;
+	}
+
+	public void setBlobName(String blobName) {
+		this.blobName = blobName;
 	}	  
 }

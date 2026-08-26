@@ -33,7 +33,7 @@ public class ImageController {
 			e.printStackTrace();
 		}
 
-        byte[] content = imageService.getImageBytes(image.getPath());
+        byte[] content = imageService.getImageBytes(image.getTitle());
 
         return ResponseEntity.ok()
                 .header("Content-Type", image.getType())

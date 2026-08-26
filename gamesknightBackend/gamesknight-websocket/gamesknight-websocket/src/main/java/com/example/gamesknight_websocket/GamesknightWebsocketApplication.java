@@ -9,8 +9,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @ComponentScan({"com.gamesknight", "com.example.gamesknight_websocket"})
-@EntityScan(basePackages = {"com.gamesknight.game","com.gamesknight.question","com.gamesknight.answer","com.gamesknight.image"})
-@EnableJpaRepositories(basePackages = {"com.gamesknight.game","com.gamesknight.question","com.gamesknight.answer","com.gamesknight.image"})
+@EntityScan(basePackages = {"com.gamesknight.game","com.gamesknight.question","com.gamesknight.answer","com.gamesknight.image","com.gamesknight.album"})
+@EnableJpaRepositories(basePackages = {"com.gamesknight.game","com.gamesknight.question","com.gamesknight.answer","com.gamesknight.image","com.gamesknight.album"})
 @EnableScheduling
 public class GamesknightWebsocketApplication {
 

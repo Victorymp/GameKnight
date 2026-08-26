@@ -11,7 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.azure.storage.blob.models.BlobStorageException;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.gamesknight.album.Album;
 import com.gamesknight.image.Image;
 import com.gamesknight.question.Question;
 import com.gamesknight.storage.BlobNotFoundException;
@@ -40,6 +42,7 @@ public class Game {
     private String gameCode;
     private String gameQrB64;
     private String gameTitle;
+    private String gameDescription;
     @Transient
     private String qrImageBase64;
 
@@ -50,6 +53,11 @@ public class Game {
     @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Image> images = new ArrayList<>();
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "album_id", nullable = true)
+    @JsonBackReference("album-games")
+    private Album album;
     
     private static final Logger logger = LoggerFactory.getLogger(Game.class);
     
@@ -98,6 +106,17 @@ public class Game {
 
 	public void setGameTitle(String gameTitle) {
 		this.gameTitle = gameTitle;
+	}
+	
+	public Album getAlbum() { return album; }
+    public void setAlbum(Album album) { this.album = album; }
+
+	public String getGameDescription() {
+		return gameDescription;
+	}
+
+	public void setGameDescription(String gameDescription) {
+		this.gameDescription = gameDescription;
 	}
 
 	public List<Question> getQuestions() {
@@ -166,24 +185,7 @@ public class Game {
 //        return this;
 //    }
     
-    public Game startGame() {
-        String blobName = "qr-" + this.gameCode + ".png";
-        try {
-            byte[] qrBytes = new GameKnightStorage().getQrIamage(blobName);
-            this.qrImageBase64 = Base64.getEncoder().encodeToString(qrBytes);
-        } catch (BlobNotFoundException e) {
-            // Blob missing — regenerate
-            try {
-                String gameUrl = API_URL + "/player/join/" + this.gameCode;
-                this.qrImageBase64 = generateQrcode(gameUrl);
-            } catch (Exception ex) {
-                logger.error("Failed to regenerate QR code for game {}", this.gameCode, ex);
-            }
-        } catch (Exception e) {
-            logger.error("Failed to fetch QR code for game {}", this.gameCode, e);
-        }
-        return this;
-    }
+    
     
     
 

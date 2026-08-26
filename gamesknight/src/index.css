@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-
 @theme {
   /* ── Page ──────────────────────────────── */
   --color-page: #F0F4F8;
@@ -28,4 +27,96 @@
   --color-success: #059669;
   --color-warning: #d97706;
   --color-error: #dc2626;
+
+  /* ══════════════════════════════════════════════════════════
+     PIXEL SYSTEM
+     Everything below drives the 8-bit look. Outlines and drop
+     shadows all read from --color-ink, so changing that one
+     value re-inks the whole UI.
+     ══════════════════════════════════════════════════════════ */
+
+  /* Ink — outlines, hard shadows, body copy on pale surfaces.
+     Deeper than --color-text so 4px borders read as sprite
+     outlines rather than as soft UI chrome. */
+  --color-ink: #10203A;
+  --color-ink-soft: #2c3f5e;
+
+  /* Sky bands. Pixel art bands rather than a smooth gradient. */
+  --color-sky-deep: #5FB4F5;
+  --color-sky: #8FCFFB;
+  --color-sky-pale: #C4E6FE;
+
+  /* Cloud */
+  --color-cloud: #FFFFFF;
+  --color-cloud-shade: #D3E9FB;
+
+  /* ── Type ──────────────────────────────── */
+  --font-pixel: "Silkscreen", ui-monospace, "Courier New", monospace;
+
+  /* Pixel type is wide and short — it needs looser tracking
+     and a tighter scale than the body face. */
+  --text-pixel-xs: 0.625rem;
+  --text-pixel-xs--line-height: 1.6;
+  --text-pixel-xs--letter-spacing: 0.12em;
+  --text-pixel-sm: 0.8125rem;
+  --text-pixel-sm--line-height: 1.5;
+  --text-pixel-sm--letter-spacing: 0.06em;
+  --text-pixel-base: 1rem;
+  --text-pixel-base--line-height: 1.45;
+  --text-pixel-lg: 1.5rem;
+  --text-pixel-lg--line-height: 1.3;
+  --text-pixel-xl: 2.25rem;
+  --text-pixel-xl--line-height: 1.2;
+  --text-pixel-2xl: 3.5rem;
+  --text-pixel-2xl--line-height: 1.1;
+
+  /* ── Hard shadows ──────────────────────── */
+  /* No blur. A pixel shadow is an offset copy of the shape. */
+  --shadow-pixel-sm: 0 2px 0 var(--color-ink);
+  --shadow-pixel: 0 4px 0 var(--color-ink);
+  --shadow-pixel-lg: 0 6px 0 var(--color-ink);
+  --shadow-pixel-pressed: 0 1px 0 var(--color-ink);
+
+  /* ── Motion ────────────────────────────── */
+  /* steps() reads as sprite frames; easing reads as modern UI. */
+  --ease-pixel: steps(2, end);
+  --animate-drift: drift 60s linear infinite;
+  --animate-bob: bob 1.2s steps(2, end) infinite;
+
+  @keyframes drift {
+    from { transform: translateX(-40vw); }
+    to   { transform: translateX(140vw); }
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Base
+   ──────────────────────────────────────────────────────────── */
+
+@layer base {
+  /* Keep pixel art crisp when scaled. */
+  .pixelated {
+    image-rendering: pixelated;
+  }
+
+  /* Anti-aliasing softens pixel fonts into mush at small sizes. */
+  .font-pixel {
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: unset;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

@@ -5,6 +5,7 @@ import com.gamesknight.game.Game;
 import com.gamesknight.game.GameRepository;
 import com.gamesknight.image.Image;
 import com.gamesknight.image.ImageService;
+import com.gamesknight.player.Player;
 import com.gamesknight.question.Question;
 import com.gamesknight.question.QuestionRepository;
 import com.gamesknight.storage.GameKnightStorage;
@@ -99,44 +100,32 @@ public class GameSessionService {
 
             boolean accepted = s.recordVote(playerId, questionId, answerId);
             if (!accepted) return;
-            
-            Answer selectedAnswer = q.getAnswers().stream()
+
+            // Score if correct — scale points by remaining time (Kahoot-style)
+            Answer chosen = q.getAnswers().stream()
                     .filter(a -> a.getId() == answerId)
                     .findFirst()
                     .orElse(null);
-           
-            if (selectedAnswer != null && selectedAnswer.isCorrect()) {
 
-                long elapsedMs = s.phaseElapsedMs();
-
-                int score = s.calculateScore(
-                        100, // base score
-                        elapsedMs,
-                        GameSession.QUESTION_DURATION_MS
-                );
-
-                s.addScore(playerId, score);
-
-                log.info("Player {} scored {} points in game {}", playerId,score,gameCode);
+            if (chosen != null && chosen.isCorrect()) {
+                long remaining = Math.max(0, GameSession.QUESTION_DURATION_MS - s.phaseElapsedMs());
+                int points = 500 + (int)((remaining * 500) / GameSession.QUESTION_DURATION_MS);
+                Player p = s.getPlayers().get(playerId);
+                if (p != null) p.addScore(points);
             }
-            
-            broadcast(gameCode, "leaderboard:update", Map.of(
-            	    "players", leaderboardPayload(s)
-            	));
 
             broadcast(gameCode, "vote:update", Map.of(
-            	    "questionId", questionId,
-            	    "counts", s.currentCounts(),
-            	    "voterCount", s.currentVoterCount(),
-            	    "playerCount", s.getPlayers().size()
-            	));
+                    "questionId", questionId,
+                    "counts", s.currentCounts(),
+                    "voterCount", s.currentVoterCount(),
+                    "playerCount", s.getPlayers().size()
+            ));
 
             if (s.allPlayersVoted()) {
                 enterReveal(s);
             }
         } finally { s.lock().unlock(); }
     }
-
     /** Called by GameScheduler on every tick. Handles phase timeouts. */
     public void tick() {
         for (GameSession s : sessions.values()) {
@@ -225,12 +214,36 @@ public class GameSessionService {
                 .findFirst()
                 .orElse(null);
 
+        // Recompute ranks
+        updateRanks(s);
+
         broadcast(s.getGameCode(), "question:reveal", Map.of(
                 "questionId", q.getId(),
                 "correctAnswerId", correctId,
                 "counts", s.currentCounts(),
-                "phaseDurationMs", GameSession.REVEAL_DURATION_MS
+                "phaseDurationMs", GameSession.REVEAL_DURATION_MS,
+                "players", playerListPayload(s)   // include updated scores/ranks
         ));
+    }
+
+    private void updateRanks(GameSession s) {
+        List<Player> sorted = s.getPlayers().values().stream()
+                .sorted(Comparator.comparingInt(Player::getScore).reversed())
+                .toList();
+
+        int rank = 0;
+        int lastScore = -1;
+        int ties = 0;
+        for (Player p : sorted) {
+            if (p.getScore() == lastScore) {
+                ties++;
+            } else {
+                rank += 1 + ties;
+                ties = 0;
+                lastScore = p.getScore();
+            }
+            p.setRank(rank);
+        }
     }
 
     private void enterEnded(GameSession s) {
@@ -238,9 +251,16 @@ public class GameSessionService {
         broadcast(s.getGameCode(), "game:end", Map.of());
     }
 
-    private List<Map<String, String>> playerListPayload(GameSession s) {
-        return s.getPlayers().entrySet().stream()
-                .map(e -> Map.of("id", e.getKey(), "name", e.getValue()))
+    private List<Map<String, Object>> playerListPayload(GameSession s) {
+        return s.getPlayers().values().stream()
+                .map(p -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", p.getId());
+                    m.put("name", p.getName());
+                    m.put("score", p.getScore());
+                    m.put("rank", p.getRank());
+                    return m;
+                })
                 .toList();
     }
 
@@ -252,6 +272,7 @@ public class GameSessionService {
     }
     
     private List<Map<String, Object>> leaderboardPayload(GameSession s) {
+    	
 
         List<Map<String, Object>> leaderboard = s.getPlayers().entrySet().stream()
                 .map(entry -> {

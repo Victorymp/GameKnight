@@ -8,6 +8,8 @@ public class ImageRequest {
     private String content;
     private String type;
     private String path;
+    private String blobName;
+    private String category;
 
     public boolean isThumbnails() {
         return thumbnails;
@@ -56,4 +58,21 @@ public class ImageRequest {
     public void setPath(String path) {
         this.path = path;
     }
+    
+    public String getBlobName() {
+		return blobName;
+	}
+
+	public void setBlobName(String blobName) {
+		this.blobName = blobName;
+	}
+
+	public String getCategory() {
+		return category;
+	}
+
+	public void setCategory(String category) {
+		this.category = category;
+	}	  
+
 }

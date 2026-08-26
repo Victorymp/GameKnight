@@ -28,6 +28,7 @@ class GameController {
     try {
       const newGame: Omit<GameData, "id" | "gameQrB64"> = {
         gameCode: gameCode ?? "",
+        gameTitle: "", 
         questions: questions ?? [],
         images: []
       };
@@ -53,7 +54,7 @@ class GameController {
     if (this.gameData) return this.gameData;
 
     try {
-      console.log(`Starting API`);
+      console.log(`Starting API with game code: ${gameCode}`);
       const created = await apiStartGame(gameCode ?? "");
       
       this.gameData = created;
@@ -112,7 +113,7 @@ class GameController {
 
     if (msg.type === "player:joined" && payload) {
       const player = (payload as Player) ?? null;
-      if (player?.id && player?.displayName) {
+      if (player?.id && player?.name) {
         playerController.addPlayer(player);
       }
       return;
@@ -132,7 +133,7 @@ class GameController {
     }
   }
 
-  async joinGame(gameCode: string, displayName: string): Promise<{ playerId: string; displayName: string }> {
+  async joinGame(gameCode: string, name: string): Promise<{ playerId: string; name: string }> {
     await connectWebSocket();
 
     return new Promise((resolve, reject) => {
@@ -144,7 +145,7 @@ class GameController {
           clearTimeout(timeoutId);
           resolve({
             playerId: msg.payload.playerId,
-            displayName: msg.payload.name,
+            name: msg.payload.name,
           });
         }
       });
@@ -156,7 +157,7 @@ class GameController {
 
       // Small delay to let subscription register on server
       setTimeout(() => {
-        sendGameSocketMessage(`/app/game/${gameCode}/join`, { name: displayName });
+        sendGameSocketMessage(`/app/game/${gameCode}/join`, { name });
       }, 200);
     });
   }

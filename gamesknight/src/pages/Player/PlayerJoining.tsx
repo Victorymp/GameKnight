@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { Screen, Header } from "../../components/ui/Screen";
 import gameController from "../../components/controllers/game-controller";
 import { useParams, useNavigate } from "react-router-dom";
+import playerController from "../../components/controllers/player-controller";
+import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
 
 export function PlayerJoining() {
-  const [displayName, setDisplayName] = useState<string>("");
+  const [name, setDisplayName] = useState<string>("");
   const [manualCode, setManualCode] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
@@ -17,8 +19,25 @@ export function PlayerJoining() {
 
   const effectiveGameId = gameId ?? manualCode;
 
+  useEffect(() => {
+    if (!effectiveGameId) return;
+    let off: (() => void) | undefined;
+    let cancelled = false;
+
+    connectWebSocket().then(() => {
+      if (cancelled) return;
+      off = subscribeToGame(effectiveGameId, (msg) => {
+        if (msg?.type === "player:list") {
+          playerController.setPlayers(msg.payload?.players ?? []);
+        }
+      });
+    });
+
+    return () => { cancelled = true; off?.(); };
+  }, [effectiveGameId]);
+
   const handleJoin = async () => {
-    const trimmedName = displayName.trim();
+    const trimmedName = name.trim();
     if (!effectiveGameId || !trimmedName) {
       setError("Enter a game code and display name.");
       return;
@@ -28,18 +47,18 @@ export function PlayerJoining() {
     setJoining(true);
     try {
       console.log(`Game Code: ${effectiveGameId}`);
-      const { playerId, displayName: confirmedName } =
+      const { playerId, name: confirmedName } =
         await gameController.joinGame(effectiveGameId, trimmedName);
 
       sessionStorage.setItem(
         `player:${effectiveGameId}`,
-        JSON.stringify({ playerId, displayName: confirmedName })
+        JSON.stringify({ playerId, name: confirmedName })
       );
 
       
 
       navigate(`/player/game/${effectiveGameId}`, {
-        state: { playerId, displayName: confirmedName },
+        state: { playerId, name: confirmedName },
       });
     } catch (err) {
       console.error(err);
@@ -73,7 +92,7 @@ export function PlayerJoining() {
           <p className="text-center">Enter a display name</p>
           <Input
             className="text-center"
-            value={displayName}
+            value={name}
             onChange={(event) => setDisplayName(event.target.value)}
           />
           {error && <p className="text-center text-red-500">{error}</p>}

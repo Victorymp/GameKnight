@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Input } from "../../components/ui/Input";
+import { ImageInput, Input } from "../../components/ui/Input";
 import { Screen, Header } from "../../components/ui/Screen";
 import SideBar from "../../components/ui/SideBar";
 import type { Question, Answer, Image, GameData } from "../../models/model";
-import { createGame } from "../../api/api-controller";
+import { addGameToAlbum, createGame } from "../../api/api-controller";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ImagePreview } from "../../components/ui/ImageView";
 
 const MAX_ANSWERS = 4;
 
@@ -49,11 +51,18 @@ function parseDataUrl(dataUrl: string): { type: string; content: string } {
 
 export default function GameMake() {
   const [gameTitle, setGameTitle] = useState("");
+  const [gameDescription, setGameDescription] = useState("");
   const [questions, setQuestions] = useState<Question[]>([newQuestion()]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdGame, setCreatedGame] = useState<GameData | null>(null);
   const [gameImage, setGameImage] = useState<Image | null>(null);
+  const navigate = useNavigate();
+
+  const [searchParams] = useSearchParams();
+  const albumId = searchParams.get("albumId");
+  const albumIdNum = albumId ? Number(albumId) : undefined;
+  
 
   function addQuestionCard() {
     setQuestions((qs) => [...qs, newQuestion()]);
@@ -118,7 +127,7 @@ export default function GameMake() {
       const { type, content } = parseDataUrl(dataUrl);
 
       const image: Image = {
-        isThumbnails: false,
+        isThumbnails: true,
         isPrimary: true,
         type,
         category: imageCategory,
@@ -210,16 +219,23 @@ export default function GameMake() {
         gameCode: code,
         questions,
         gameTitle,
+        gameDescription,
         images: gameImage ? [gameImage] : [],
       };
 
       const game = await createGame(newGame);
+
+      if (albumIdNum != null && game?.id) {
+        await addGameToAlbum(albumIdNum, game.id);
+      }
 
       if (!game?.id) {
         throw new Error("Game creation did not return an id");
       }
 
       setCreatedGame(game);
+
+
     } catch (err) {
       console.error(err);
       setError("Failed to save game.");
@@ -229,9 +245,14 @@ export default function GameMake() {
   }
 
   function handleMakeAnother() {
+    if (albumIdNum != null) {
+      navigate(`/albums/${albumIdNum}/edit`);
+      return;
+    }
     setCreatedGame(null);
     setQuestions([newQuestion()]);
     setGameTitle("");
+    setGameDescription("");
     setError(null);
   }
 
@@ -270,7 +291,15 @@ export default function GameMake() {
       <Header />
       <div className="flex flex-1">
         <SideBar />
+        
         <div className="flex flex-col gap-4 p-4 max-w-2xl mx-auto">
+          {albumIdNum != null && (
+            <Card className="p-3 bg-blue-50">
+              <p className="text-sm">
+                Creating game inside album — will be added automatically on save
+              </p>
+            </Card>
+          )}
           <Card className="flex flex-col gap-2 p-4">
             <p className="font-semibold">Quiz Title</p>
 
@@ -279,25 +308,43 @@ export default function GameMake() {
               onChange={(e) => setGameTitle(e.target.value)}
               placeholder="Enter quiz title"
             />
+            <Input
+              value={gameDescription}
+              onChange={(e) => setGameDescription(e.target.value)}
+              placeholder="Enter quiz description"
+            />
+
 
             <div className="flex flex-col gap-2">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  handleImageGameChange(
-                    e.target.files?.[0] ?? null,
-                    "IMAGE"
-                  )
-                }
+              <ImageInput
+                chooseText="Upload thumbnail art"
+                emptyText="Nothing selected yet"
+                onChange={(e) => handleImageGameChange(
+                                  e.target.files?.[0] ?? null,
+                                  "IMAGE"
+                                )}
               />
+              {/* //<input
+              //   type="file"
+              //   accept="image/*"
+              //   onChange={(e) =>
+              //     handleImageGameChange(
+              //       e.target.files?.[0] ?? null,
+              //       "IMAGE"
+              //     )
+              //   }
+              // /> */}
 
               {gameImage && (
-                <img
+                <ImagePreview 
                   src={imagePreview(gameImage)}
-                  alt="Quiz"
-                  className="max-h-40 rounded border"
+                  title="Quiz"
                 />
+                // <img
+                //   src={imagePreview(gameImage)}
+                //   alt="Quiz"
+                //   className="max-h-40 rounded border"
+                // />
               )}
             </div>
           </Card>
@@ -323,18 +370,17 @@ export default function GameMake() {
               />
 
               <div className="flex flex-col gap-2">
-                <input
-                  type="file"
-                  accept="image/*"
+                <ImageInput
+                  chooseText="Upload question art"
+                  emptyText="Nothing selected yet"
                   onChange={(e) =>
-                    handleImageChange(question.id, e.target.files?.[0] ?? null)
-                  }
-                />
+                      handleImageChange(question.id, e.target.files?.[0] ?? null)
+                    }
+              />
                 {question.images && question.images.length > 0 && (
-                  <img
+                  <ImagePreview 
                     src={imagePreview(question.images[0])}
-                    alt="Question"
-                    className="max-h-40 rounded border"
+                    title="Question"
                   />
                 )}
               </div>

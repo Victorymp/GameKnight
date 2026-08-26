@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.azure.storage.blob.models.BlobStorageException;
+import com.gamesknight.album.AlbumRepository;
 import com.gamesknight.answer.Answer;
 import com.gamesknight.answer.AnswerRequest;
 import com.gamesknight.image.Image;
@@ -36,6 +37,9 @@ public class GameControllerApi {
     @Autowired
     private final QuestionRepository questionRepository;
     
+    @Autowired
+    private final AlbumRepository albumRepository;
+    
     private GameService gameService;
     
     private ImageService imageService;
@@ -44,24 +48,21 @@ public class GameControllerApi {
 
     private static final Logger logger = LoggerFactory.getLogger(GameControllerApi.class);
 
-    public GameControllerApi(GameRepository repository, QuestionRepository questionRepository, GameModelAssembler assembler, GameService gameservice, ImageService imageService) {
+    public GameControllerApi(GameRepository repository, QuestionRepository questionRepository, GameModelAssembler assembler, GameService gameservice, ImageService imageService, AlbumRepository albumRepository) {
         this.repository = repository;
         this.questionRepository = questionRepository;
         this.assembler = assembler;
         this.gameService = gameservice;
         this.imageService = imageService;
+        this.albumRepository = albumRepository;
     }
 
     @Transactional
 	@PostMapping("/startgame")
 	ResponseEntity<Game> create(@RequestBody GameRequest request) {
-	    logger.info("Creating game with code: {}", request.getGameCode());
+	    logger.info("Starting game with code: {}", request.getGameCode());
 	    String gameCode = request.getGameCode();
 	    Game chosenGame = gameService.startGame(gameCode);
-//	    Game chosenGame = repository.findByGameCode(gameCode)
-//				.orElseThrow(() -> new GameNotFoundException(gameCode));
-	    
-	    chosenGame.startGame();
 
 	    logger.info("Game created successfully with code: {}", chosenGame.getGameCode());
 	    logger.info("Game: {}",chosenGame.toString());
@@ -79,6 +80,8 @@ public class GameControllerApi {
         Game newGame = new Game();
         
         newGame.setGameCode(request.getGameCode());
+        newGame.setGameTitle(request.getGameTitle());
+        if (request.getGameDescription() != null)newGame.setGameDescription(request.getGameDescription());
         
         if (request.getQuestions() != null) {
             for (QuestionRequest qr : request.getQuestions()) {
@@ -104,11 +107,8 @@ public class GameControllerApi {
         
         if (request.getImages() != null) {
         	for (ImageRequest ir: request.getImages()) {
-        		logger.info("Adding image");
-        		Image image = new Image(ir);
-        		image.setGame(newGame);
         		
-        		newGame.addImage(image);
+        		newGame.addImage(new Image(ir, newGame));
         	}
         }
         
@@ -227,6 +227,15 @@ public class GameControllerApi {
         }
         List<Question> questions = questionRepository.findByGameId(gameId);
         return ResponseEntity.ok(questions);
+    }
+    
+    @GetMapping("/{id}/albums")
+    ResponseEntity<List<Game>> fetchGamesByAlbum(@PathVariable Long id) {
+        if (!albumRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        List<Game> games = repository.findByAlbumId(id);
+        return ResponseEntity.ok(games);
     }
     
     @GetMapping("/{id}") 

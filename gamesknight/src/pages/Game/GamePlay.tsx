@@ -7,6 +7,7 @@ import { Timer } from "../../components/ui/Timer";
 import { QuestionCard } from "../../components/ui/QuestionCard";
 import { fetchQuestionImage } from "../../api/api-controller";
 import Leaderboard from "../../components/ui/Leaderboard";
+import LobbyLeaderboard from "../../components/ui/LobbyLeaderboard";
 
 type Phase = "lobby" | "get_ready" | "question" | "reveal" | "ended";
 
@@ -15,9 +16,8 @@ type Phase = "lobby" | "get_ready" | "question" | "reveal" | "ended";
 
 export default function GamePlay() {
   const game = gameController.getGame();
-  const [gameCode, setGameCode] = useState<string>();
   const [phase, setPhase] = useState<Phase>("lobby");
-  const [playerCount, setPlayerCount] = useState<number>(0);
+  const [, setPlayerCount] = useState<number>(0);
   const [question, setQuestion] = useState<QuestionView | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(game?.questions.length ?? 0);
@@ -29,6 +29,8 @@ export default function GamePlay() {
   const [phaseDuration, setPhaseDuration] = useState<number>(30_000);
   const [msLeft, setMsLeft] = useState<number>(30_000);  
   const [questionImage, setQuestionImage] = useState<QuestionImage |null>(null);
+
+  
 
   useEffect(() => {
     setTotalQuestions(game?.questions.length ?? 0);
@@ -46,6 +48,7 @@ export default function GamePlay() {
   useEffect(() => {
     return playerController.subscribe(setPlayers);
   }, []);
+
 
   useEffect(() => {
     if (!question?.id) {
@@ -72,13 +75,15 @@ export default function GamePlay() {
     let off: (() => void) | undefined;
     connectWebSocket().then(() => {
       off = subscribeToGame(game.gameCode, (msg) => {
+        console.log(`Message type: ${msg?.type}`);
         switch (msg?.type) {
           case "player:list":
             playerController.setPlayers(
-              (msg.payload?.players ?? []).map((player: { id: string; name?: string; displayName?: string; score?: number }) => ({
+              (msg.payload?.players ?? []).map((player: { id: string; name?: string; score?: number, rank?: number }) => ({
                 id: player.id,
-                displayName: player.displayName ?? player.name ?? "Player",
+                name: player.name ?? "Player",
                 score: player.score ?? 0,
+                rank: player.rank ?? 0
               })),
             );
             break;
@@ -94,6 +99,11 @@ export default function GamePlay() {
             setCorrectAnswerId(null);
             setPhase("get_ready");
             break;
+          case "leaderboard:update":
+            if (msg.payload.players) {
+                playerController.setPlayers(msg.payload.players);
+              }
+            break
           case "question:show":
             setQuestion(msg.payload.question);
             setQuestionIndex(msg.payload.questionIndex);
@@ -114,6 +124,9 @@ export default function GamePlay() {
           case "question:reveal":
             setCounts(msg.payload.counts ?? {});
             setCorrectAnswerId(msg.payload.correctAnswerId ?? null);
+            if (msg.payload.players) {
+              playerController.setPlayers(msg.payload.players);
+            }
             setPhase("reveal");
             break;
           case "game:end":
@@ -148,15 +161,12 @@ export default function GamePlay() {
         <div className="text-right">
           <div className="text-sm opacity-70">Players</div>
           <div className="text-3xl font-bold">{players.length}</div>
-          <div><Leaderboard
-           players={players}
-          /></div>
         </div>
       </header>
 
       {phase === "lobby" && (
         <div className="text-center mt-20">
-          <h1 className="text-4xl font-bold mb-6">Waiting for players...</h1>
+          <h1 className="text-4xl font-bold mb-6">Scan QR to join</h1>
           {game.qrImageBase64 && (
             <img
               src={`data:image/png;base64,${game.qrImageBase64}`}
@@ -166,9 +176,14 @@ export default function GamePlay() {
           )}
           {/*<ul className="my-6 space-y-1">
             {players.map((p) => (
-              <li key={p.id} className="text-lg">{p.displayName}</li>
+              <li key={p.id} className="text-lg">{p.name}</li>
             ))}
           </ul>*/}
+          <div className="mx-auto py-4">
+            <LobbyLeaderboard
+              players={playerController.getPlayers()}
+              />
+          </div>
           <button
             onClick={startGame}
             disabled={players.length === 0}
@@ -180,7 +195,7 @@ export default function GamePlay() {
       )}
 
       {phase === "get_ready" && question && (
-        <div className="flex flex-col items-center justify-center h-full">
+        <div className="flex flex-col items-center justify-center h-full w-full gap-4 px-6">
           <div className="text-2xl mb-4">Get ready...</div>
           <h2 className="text-3xl font-bold text-center">{question.text}</h2>
           {questionImage && (
@@ -190,7 +205,9 @@ export default function GamePlay() {
               className="max-h-64 rounded mt-6"
             />
           )}
-          <Timer msLeft={msLeft} totalMs={phaseDuration} />
+          <div className="w-full max-w-3xl flex-1 min-h-0 overflow-y-auto">
+            <Leaderboard players={playerController.getPlayers()} />
+          </div>       
         </div>
       )}
 
@@ -215,8 +232,10 @@ export default function GamePlay() {
       )}
 
       {phase === "ended" && (
-        <div className="text-center mt-20">
-          <h1 className="text-5xl font-bold">Game Over</h1>
+        <div className="text-center mt-20 gap-4">
+          <h1 className="text-5xl font-bold">Results</h1>
+          <Leaderboard 
+            players={playerController.getPlayers()}/>
         </div>
       )}
     </div>

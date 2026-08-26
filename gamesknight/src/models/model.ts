@@ -1,11 +1,19 @@
-export interface UserData {
-
+export interface Album {
+  id: number;
+  title: string;
+  description?: string;
+  tags?: string;
+  isPublic: boolean;
+  ownerId?: string;
+  games: GameData[];
+  images: Image[];
 }
 
 export interface Player{
-  displayName: string;
+  name: string;
   id: string;
   score: number;
+  rank?: number;
 }
 
 export interface GameQr{
@@ -14,13 +22,14 @@ export interface GameQr{
   gameCode: string;
 }
 
-export interface GameData extends GameQr{
-  // Game id is th Id of the running game
+export interface GameData extends GameQr {
   id: number;
-  gameTitle: string;
+  gameTitle?: string;
   questions: Question[];
   qrImageBase64?: string;
   images: Image[];
+  albumId?: number;
+  gameDescription: string;
 }
 
 export interface Answer {
@@ -40,7 +49,7 @@ export interface Image {
   isThumbnails: boolean;
   isPrimary: boolean;
   type: string;
-  category?: string;
+  category: string;
   title: string;
   content: string;
   path?: string;

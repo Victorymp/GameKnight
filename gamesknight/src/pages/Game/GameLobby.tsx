@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/Button";
 import gameController from "../../components/controllers/game-controller";
 import playerController from "../../components/controllers/player-controller";
 import SideBar from "../../components/ui/SideBar";
-import { fetchGame, getGameData } from "../../api/api-controller";
+import { fetchGame } from "../../api/api-controller";
 import { useParams, useNavigate } from "react-router-dom";
 import { connectWebSocket, sendGameSocketMessage, subscribeToGame } from "../../websocket/websocket";
 import { ImageView } from "../../components/ui/ImageView";
@@ -15,59 +15,74 @@ export default function GameLobby() {
   const { gameId } = useParams<{ gameId: string }>();
   const [game, setGame] = useState<GameData | null>(null);
   const [, setGameCodeQr] = useState<string | undefined>();
-  const [gameCode, setGameCode] = useState<string>();
   const [, setIsLoading] = useState(false);
   const [, setError] = useState<string | undefined>();
   const [, setPlayers] = useState<Player[]>(playerController.getPlayers());
   const [, setThumbnail] = useState<Image | null>(null);
   const navigate = useNavigate();
 
+  const gameCode = game?.gameCode;
+
+  // 1. player controller subscription
   useEffect(() => {
     setPlayers(playerController.getPlayers());
-    const unsubscribe = playerController.subscribe(setPlayers);
-    return unsubscribe;
+    return playerController.subscribe(setPlayers);
   }, []);
 
+  // 2. load the game by id — single source of truth for gameCode
   useEffect(() => {
-    async function getGameData(id: number){
-      const gameData = await fetchGame(id);
-      setGame(gameData);
-    }
-    if(!game) getGameData(2);
-  }, []);
+    if (!gameId) return;
+    let cancelled = false;
 
+    fetchGame(Number(gameId))
+      .then((data) => {
+        if (cancelled) return;
+        setGame(data);
+        const thumb = data.images?.find((im) => im.isThumbnails && im.isPrimary);
+        setThumbnail(thumb ?? null);
+      })
+      .catch(() => setError("Failed to load game."));
+
+    return () => { cancelled = true; };
+  }, [gameId]);
+
+  // 3. start the game — only once we have the CODE
   useEffect(() => {
-    const code = game?.gameCode;
-    if (!code) return;
+    if (!gameCode) return;
+    let cancelled = false;
 
+    (async () => {
+      setError(undefined);
+      setIsLoading(true);
+      try {
+        const started = await gameController.startGame(gameCode);
+        if (cancelled) return;
+
+        const b64 = (started?.gameQrB64 ?? started?.qrImageBase64 ?? "") as string;
+        setGameCodeQr(
+          b64 ? (b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`) : undefined
+        );
+        if (!b64) setError("No QR available for this game.");
+      } catch {
+        if (!cancelled) { setError("Failed to create game."); setGameCodeQr(undefined); }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [gameCode]);
+
+  // 4. ONE websocket effect, keyed on the code
+  useEffect(() => {
+    if (!gameCode) return;
     let off: (() => void) | undefined;
+    let cancelled = false;
 
     connectWebSocket().then(() => {
-      off = subscribeToGame(code, (msg) => {
-        if (msg?.type === "player:list") {
-          playerController.setPlayers(msg.payload?.players ?? []);
-        }
-      });
-    });
-
-    return () => {
-      off?.();
-      playerController.clear();  // also clear stale players when switching games
-    };
-  }, [game?.gameCode]);
-
-  useEffect(() => {
-  const code = game?.gameCode;
-  if (!code) return;
-
-  let off: (() => void) | undefined;
-
-  connectWebSocket().then(() => {
-      // Reset the server-side session first
-      sendGameSocketMessage(`/app/game/${code}/reset`, {});
-      
-      // Then subscribe to updates
-      off = subscribeToGame(code, (msg) => {
+      if (cancelled) return;
+      sendGameSocketMessage(`/app/game/${gameCode}/reset`, {});
+      off = subscribeToGame(gameCode, (msg) => {
         switch (msg?.type) {
           case "player:list":
             playerController.setPlayers(msg.payload?.players ?? []);
@@ -79,85 +94,12 @@ export default function GameLobby() {
       });
     });
 
-    return () => {
-      off?.();
-      playerController.clear();
-    };
-  }, [game?.gameCode]);
-
-  useEffect(() => {
-    if (!gameId) return;
-    const getGame: Omit<GameData, "id" | "gameQrB64"> = {
-        gameCode: gameId ?? "",
-        gameTitle: "",
-        questions: [],
-        images: []
-      };
-    getGameData(getGame)
-      .then((data) => setGame(data))
-      .catch((error) => {
-        console.error("Failed to load game data", error);
-      });
-    
-    if (!game) return;
-    const thumbnail_primary = game.images.find((im) => im.isThumbnails && im.isPrimary);
-    if (!thumbnail_primary) return;
-    setThumbnail(thumbnail_primary);
-
-    
-
-  }, [gameId]);
-
-  useEffect(() => {
-
-    async function prepareGame() {
-      console.log(`Game chosen: ${gameId}`);
-      if (!gameId) {
-        setError("Please enter a game code before starting.");
-        return;
-      }
-
-      setError(undefined);
-      setIsLoading(true);
-      try {
-        const started = await gameController.startGame(gameId);
-        let b64: string  = started?.gameQrB64 as string;
-        if (!b64){
-          b64 = `${started?.qrImageBase64 ?? ""}` as string;
-        }
-        setGameCode(started?.gameCode);
-        if (b64 && typeof b64 === "string") {
-          const src = b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
-          setGameCodeQr(src);
-        } else {
-          setGameCodeQr(undefined);
-          setError("No QR available for this game.");
-        }
-      } catch (err) {
-        setError("Failed to create game.");
-        setGameCodeQr(undefined);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    prepareGame();
-
-    return () => {  true };
-  }, [])
-
-
+    return () => { cancelled = true; off?.(); playerController.clear(); };
+  }, [gameCode]);
 
   function beginGame() {
-    if (!gameCode) {
-      setError("No game loaded.");
-      return;
-    }
-    // if (players.length === 0) {
-    //   setError("Need at least one player to start.");
-    //   return;
-    // }
+    if (!gameCode) { setError("No game loaded."); return; }
     setError(undefined);
-    
     navigate(`/game/${gameCode}/host`);
   }
 

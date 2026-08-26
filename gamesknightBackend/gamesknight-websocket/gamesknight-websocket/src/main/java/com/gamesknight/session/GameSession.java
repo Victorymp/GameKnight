@@ -1,6 +1,7 @@
 package com.gamesknight.session;
 
 import com.gamesknight.game.Game;
+import com.gamesknight.player.Player;
 import com.gamesknight.question.Question;
 
 import java.util.*;
@@ -20,13 +21,15 @@ public class GameSession {
     private long phaseStartMs = 0L;
 
     // playerId -> displayName
-    private final Map<String, String> players = new LinkedHashMap<>();
+//    private final Map<String, String> players = new LinkedHashMap<>();
     // questionId -> (answerId -> count)
     private final Map<Long, Map<Long, Integer>> counts = new HashMap<>();
     // questionId -> set of playerIds who have voted
     private final Map<Long, Set<String>> voters = new HashMap<>();
     
     private final Map<String, Integer> scores = new HashMap<>();
+    
+    private final Map<String, Player> players = new HashMap<>();
 
     public GameSession(Game game) {
         this.gameCode = game.getGameCode();
@@ -39,7 +42,7 @@ public class GameSession {
     public GamePhase getPhase() { return phase; }
     public int getCurrentQuestionIndex() { return currentQuestionIndex; }
     public long getPhaseStartMs() { return phaseStartMs; }
-    public Map<String, String> getPlayers() { return players; }
+    public Map<String, Player> getPlayers() { return players; }
 
     public Question getCurrentQuestion() {
         List<Question> qs = game.getQuestions();
@@ -60,12 +63,28 @@ public class GameSession {
     }
 
     public void addPlayer(String playerId, String name) {
-        players.put(playerId, name);
-        scores.put(playerId, 0);
+        players.put(playerId, new Player(playerId, name));
     }
     
     public void addScore(String playerId, int points) {
-        scores.merge(playerId, points, Integer::sum);
+        Player player = players.get(playerId);
+
+        if (player != null) {
+            player.addScore(points);
+        }
+    }
+    
+    public List<Player> getLeaderbord() {
+    	List<Player> leaderboard = players.values()
+    	        .stream()
+    	        .sorted(Comparator.comparingInt(Player::getScore).reversed())
+    	        .toList();
+    	
+    	for (int i = 0; i < leaderboard.size(); i++) {
+    	    leaderboard.get(i).setRank(i + 1);
+    	}
+    	
+    	return leaderboard;
     }
     
     public int getScore(String playerId) {

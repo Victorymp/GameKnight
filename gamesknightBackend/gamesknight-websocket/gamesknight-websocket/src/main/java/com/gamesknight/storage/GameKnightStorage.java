@@ -46,12 +46,12 @@ public class GameKnightStorage {
                 ? image.getContent().substring(image.getContent().indexOf(",") + 1)
                 : image.getContent();
         byte[] data = Base64.getDecoder().decode(base64Payload);
-        switch (image.getType()) {
+        switch (image.getCategory()) {
             case "QR":
-                return uploadImage(image.getPath(), data, QR_CONTAINER);
+                return uploadImage(image.getBlobName(), data, QR_CONTAINER);
 
             case "IMAGE":
-                return uploadImage(image.getPath(), data, IMAGE_CONTAINER);
+                return uploadImage(image.getBlobName(), data, IMAGE_CONTAINER);
 
             default:
                 throw new IllegalArgumentException("Unknown image type: " + image.getType());
@@ -73,13 +73,13 @@ public class GameKnightStorage {
 	}
 	
 	public byte[] getImage(Image image) {
-		switch(image.getPath()) {
+		switch(image.getCategory()) {
 			case "QR":
-				return getImage(image.getPath(), QR_CONTAINER);
+				return getImage(image.getBlobName(), QR_CONTAINER);
 			case "IMAGE":
-				return getImage(image.getPath(), IMAGE_CONTAINER);
+				return getImage(image.getBlobName(), IMAGE_CONTAINER);
 		}
-		return getImage(image.getPath(), IMAGE_CONTAINER);
+		return getImage(image.getBlobName(), IMAGE_CONTAINER);
 	}
 	
 	public List<Image> setImage(List<Image> images) {
@@ -92,11 +92,10 @@ public class GameKnightStorage {
 	        }
 
 	        // Generate a path if the client didn't supply one
-	        String blobName = image.getPath();
+	        String blobName = image.getBlobName();
 	        if (blobName == null || blobName.isEmpty()) {
-	            String ext = extensionFor(image.getType());
-	            blobName = "img-" + UUID.randomUUID() + ext;
-	            image.setPath(blobName);
+	        	blobName = generateBlobName(image.getType());
+	        	image.setBlobName(blobName);
 	        }
 
 	        String base64Payload = image.getContent().contains(",")
@@ -108,7 +107,7 @@ public class GameKnightStorage {
 	        String url = uploadImage(blobName, data, container);
 
 	        // Optionally store the URL, or leave path as the blob name
-	        image.setPath(blobName);
+	        image.setPath(url);
 	        // Clear content so the base64 doesn't get persisted (it's @Transient anyway)
 	        image.setContent(null);
 
@@ -152,6 +151,11 @@ public class GameKnightStorage {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         blobClient.downloadStream(outputStream);
         return outputStream.toByteArray();
+    }
+    
+    public String generateBlobName(String type) {
+    	String ext = extensionFor(type);
+        return "img-" + UUID.randomUUID() + ext;
     }
 
 }

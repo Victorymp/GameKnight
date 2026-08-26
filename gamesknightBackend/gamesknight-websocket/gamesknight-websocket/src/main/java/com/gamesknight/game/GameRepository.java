@@ -24,6 +24,9 @@ public interface GameRepository extends JpaRepository<Game, Long> {
     	    "LEFT JOIN FETCH g.images "+
     	    "WHERE g.gameCode = :gameCode ")
     Optional<Game> findByGameCodeWithImages(@Param("gameCode") String gameCode);
+    
+    @Query("SELECT g FROM Game g WHERE g.album.id = :albumId")
+    List<Game> findByAlbumId(@Param("albumId") Long albumId);
 
 	List<Game> findAll();
 }
