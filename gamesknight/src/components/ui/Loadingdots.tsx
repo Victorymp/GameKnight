@@ -1,4 +1,5 @@
 import { motion, type Variants } from "framer-motion";
+import { PixelGlyph } from "./PixelStyle";
 
 const dotVariants: Variants = {
   jump: {
@@ -15,11 +16,19 @@ const dotVariants: Variants = {
 function Dot() {
   return (
     <motion.div
-      className="w-5 h-5 rounded-full bg-blue-500 will-change-transform"
+      className="w-5 h-5 rounded-full will-change-transform"
       variants={dotVariants}
-    />
+    >
+    <PixelGlyph
+        name={"square"}
+        size={20}
+        className="relative"
+      />
+    </motion.div>
   );
 }
+
+
 
 export default function LoadingThreeDotsJumping() {
   return (

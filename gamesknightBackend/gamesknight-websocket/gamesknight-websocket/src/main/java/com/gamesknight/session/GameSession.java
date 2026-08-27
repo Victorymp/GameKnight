@@ -11,6 +11,7 @@ public class GameSession {
     public static final long QUESTION_DURATION_MS = 30_000L;
     public static final long REVEAL_DURATION_MS = 5_000L;
     public static final long GET_READY_DURATION_MS = 5_000L;
+    public static final long SCORE_DURATION_MS = 5_000;
     
     private final String gameCode;
     private final Game game;

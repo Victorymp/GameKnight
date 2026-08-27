@@ -88,6 +88,7 @@ public class ImageService {
     	}
 
     public List<Image> uploadImages(List<Image> images) {
+    	
         if (images == null || images.isEmpty()) return List.of();
         return storage.setImage(images);
     }

@@ -143,7 +143,20 @@ public class GameSessionService {
                         }
                     }
                     case REVEAL -> {
-                        if (s.phaseElapsedMs() >= GameSession.REVEAL_DURATION_MS) {
+//                        if (s.phaseElapsedMs() >= GameSession.REVEAL_DURATION_MS) {
+//                            int next = s.getCurrentQuestionIndex() + 1;
+//                            if (next >= s.getGame().getQuestions().size()) {
+//                                enterEnded(s);
+//                            } else {
+//                                advanceToQuestion(s, next);
+//                            }
+//                        }
+                    	if (s.phaseElapsedMs() >= GameSession.REVEAL_DURATION_MS) {
+                            enterScore(s);
+                        }
+                    }
+                    case SCORE -> {
+                        if (s.phaseElapsedMs() >= GameSession.SCORE_DURATION_MS) {
                             int next = s.getCurrentQuestionIndex() + 1;
                             if (next >= s.getGame().getQuestions().size()) {
                                 enterEnded(s);
@@ -272,7 +285,6 @@ public class GameSessionService {
     }
     
     private List<Map<String, Object>> leaderboardPayload(GameSession s) {
-    	
 
         List<Map<String, Object>> leaderboard = s.getPlayers().entrySet().stream()
                 .map(entry -> {
@@ -299,6 +311,21 @@ public class GameSessionService {
         }
 
         return result;
+    }
+    
+    private void enterScore(GameSession s) {
+        s.enterPhase(GamePhase.SCORE, s.getCurrentQuestionIndex());
+
+        int next = s.getCurrentQuestionIndex() + 1;
+        boolean isLast = next >= s.getGame().getQuestions().size();
+
+        broadcast(s.getGameCode(), "score:show", Map.of(
+                "questionIndex", s.getCurrentQuestionIndex(),
+                "totalQuestions", s.getGame().getQuestions().size(),
+                "phaseDurationMs", GameSession.SCORE_DURATION_MS,
+                "isFinalQuestion", isLast,
+                "players", playerListPayload(s)
+        ));
     }
     
     public void resetGame(String gameCode) {

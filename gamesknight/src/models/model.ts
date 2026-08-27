@@ -29,7 +29,7 @@ export interface GameData extends GameQr {
   qrImageBase64?: string;
   images: Image[];
   albumId?: number;
-  gameDescription: string;
+  gameDescription?: string;
 }
 
 export interface Answer {
@@ -83,3 +83,7 @@ export interface PlayerQuestion {
   text: string;
   answers: { id: number; text: string }[];
 }
+
+export type PlayerPhase =  "waiting" | "get_ready" | "voting" | "voted" | "reveal" | "score" | "ended";
+
+export type HostPhase = "lobby" | "get_ready" | "question" | "reveal" | "score" | "ended";

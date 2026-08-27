@@ -162,32 +162,6 @@ public class Game {
     	images.remove(image);
     	image.setGame(null);
     }
-    
-//    public Game startGame() {
-//        String blobName = "qr-" + this.gameCode + ".png";
-//        try {
-//            byte[] qrBytes = new GameKnightStorage().getQrIamage(blobName);
-//            this.qrImageBase64 = Base64.getEncoder().encodeToString(qrBytes);
-//        } catch (BlobNotFoundException e) {
-//            // Blob missing — regenerate the QR, upload it, and encode it for the response
-//            try {
-//                String gameUrl = API_URL + "/player/join/" + this.gameCode;
-//                String qrBytesBase64 = generateQrcode(gameUrl);   // returns base64 string
-//                // String qrBlobUrl = new GameKnightStorage().uploadQr(blobName, qrBytesBase64);
-//                // this.setGameQrB64(qrBlobUrl);                     // URL stays in the column (small, fits)
-//                this.qrImageBase64 = qrBytesBase64;               // base64 goes in the transient field
-//            } catch (Exception ex) {
-//                logger.error("Failed to regenerate QR code for game {}", this.gameCode, ex);
-//            }
-//        } catch (Exception e) {
-//            logger.error("Failed to fetch QR code for game {}", this.gameCode, e);
-//        }
-//        return this;
-//    }
-    
-    
-    
-    
 
     public Game createGame() {
         String gameUrl = API_URL + "/player/join/" + gameCode;

@@ -110,15 +110,13 @@ export default function GameLobby() {
           <SideBar className="w-56 shrink-0" />
           <main>
             <div className="flex flex-1 gap-2 py-3 px-3">
-              <Card>
-                <div className="flex flex-col gap-2 items-center">
+              <Card className="mb-16">
+                <div className="flex flex-col gap-2 items-center m-1">
                 {game && game.images?.length > 0 && (
-                  <div className="border">
                     <ImageView
                       imageId={game.images[0].id ?? 0}
                       title={game.images[0].title ?? ""}
                     />
-                  </div>
                 )}
                   <div className="flex flex-col items-center">
                     <p>{game?.gameTitle}</p>

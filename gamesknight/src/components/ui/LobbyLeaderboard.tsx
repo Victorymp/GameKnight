@@ -1,4 +1,4 @@
-import { Card } from "./Card";
+import { Card } from "./PixelCard";
 import type { Player } from "../../models/model";
 import { motion, AnimatePresence } from "framer-motion";
 import LoadingThreeDotsJumping from "./Loadingdots";

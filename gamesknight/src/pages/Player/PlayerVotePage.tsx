@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useNavigate } from "react-router-dom";
+import { cn } from "../../lib/utils";
 import gameController from "../../components/controllers/game-controller";
-import { subscribeToGame, connectWebSocket } from "../../websocket/websocket";
-import type { PlayerQuestion } from "../../models/model";
-import { useNavigate } from "react-router-dom";
-import Leaderboard from "../../components/ui/Leaderboard";
 import playerController from "../../components/controllers/player-controller";
+import { subscribeToGame, connectWebSocket } from "../../websocket/websocket";
+import { Screen, Header } from "../../components/ui/Screen";
+import { AnswerCard } from "../../components/ui/AnswerCard";
+import Leaderboard from "../../components/ui/Leaderboard";
 import LobbyLeaderboard from "../../components/ui/LobbyLeaderboard";
+import type { PlayerQuestion, PlayerPhase as Phase } from "../../models/model";
 
-const ANSWER_COLORS = ["bg-red-500", "bg-blue-500", "bg-yellow-500", "bg-green-500"];
-const ANSWER_LETTERS = ["A", "B", "C", "D"];
 
-type Phase = "waiting" | "get_ready" | "voting" | "voted" | "reveal" | "ended";
 
 function getStoredPlayer(gameCode: string): { playerId: string; name: string } | null {
   const raw = sessionStorage.getItem(`player:${gameCode}`);
@@ -26,13 +25,16 @@ function getStoredPlayer(gameCode: string): { playerId: string; name: string } |
 }
 
 export default function PlayerVotePage() {
-  // const game = gameController.getGame();
   const { gameCode } = useParams<{ gameCode: string }>();
-
   const navigate = useNavigate();
 
   const playerId = useMemo(
     () => (gameCode ? getStoredPlayer(gameCode)?.playerId ?? null : null),
+    [gameCode]
+  );
+
+  const playerName = useMemo(
+    () => (gameCode ? getStoredPlayer(gameCode)?.name ?? null : null),
     [gameCode]
   );
 
@@ -41,15 +43,11 @@ export default function PlayerVotePage() {
   const [selectedAnswerId, setSelectedAnswerId] = useState<number | null>(null);
   const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(null);
 
-  
-
   useEffect(() => {
-    console.log(`This is game code: ${gameCode}`);
     if (!gameCode) return;
     let off: (() => void) | undefined;
     connectWebSocket().then(() => {
       off = subscribeToGame(gameCode, (msg) => {
-        console.log(`Message Type: ${msg?.type}`)
         switch (msg?.type) {
           case "player:list":
             playerController.setPlayers(
@@ -60,7 +58,6 @@ export default function PlayerVotePage() {
                 rank: player.rank ?? 0
               })),
             );
-            console.log(`Player list: ${playerController.getPlayers()}`)
             break;
           case "question:show":
             setQuestion(msg.payload.question);
@@ -68,11 +65,17 @@ export default function PlayerVotePage() {
             setCorrectAnswerId(null);
             setPhase("voting");
             break;
+          case "score:show":
+            if (msg.payload.players) {
+              playerController.setPlayers(msg.payload.players);
+            }
+            setPhase("score");
+            break;
           case "leaderboard:update":
             if (msg.payload.players) {
-                playerController.setPlayers(msg.payload.players);
-              }
-            break
+              playerController.setPlayers(msg.payload.players);
+            }
+            break;
           case "question:preload":
             setQuestion(msg.payload.question);
             setSelectedAnswerId(null);
@@ -82,8 +85,8 @@ export default function PlayerVotePage() {
           case "question:reveal":
             setCorrectAnswerId(msg.payload.correctAnswerId);
             if (msg.payload.players) {
-                playerController.setPlayers(msg.payload.players);
-              }
+              playerController.setPlayers(msg.payload.players);
+            }
             setPhase("reveal");
             break;
           case "game:end":
@@ -110,83 +113,133 @@ export default function PlayerVotePage() {
     setPhase("voted");
     gameController.send({
       destination: `/app/game/${gameCode}/vote`,
-      body: {
-        playerId,
-        questionId: question.id,
-        answerId,
-      },
+      body: { playerId, questionId: question.id, answerId },
     });
   }
 
+  const revealed = phase === "reveal";
+  const gotItRight = revealed && selectedAnswerId === correctAnswerId;
+
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col p-4">
-      {phase === "waiting" && (
-        <div className="m-auto text-center">
-          <div className="text-2xl">Waiting for the game to start...</div>
-          <LobbyLeaderboard players={playerController.getPlayers()} currentPlayerId={playerId} />
-        </div>
-      )}
-      {(phase === "get_ready") && question && (
-        <>
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="text-2xl mb-4">Get ready...</div>
-          <h2 className="text-3xl font-bold text-center">{question.text}</h2>
-          <Leaderboard 
-            players={playerController.getPlayers()} currentPlayerId={playerId}
-          />
-        </div>
-        </>
-      )}
+    <Screen>
+      <Header
+        playerName={playerName?? ""}
+        initial={playerName ?? "?"}
+      />
 
-      {(phase === "voting" || phase === "voted" || phase === "reveal") && question && (
-        <>
-          <div className="text-center text-lg mb-6">{question.text}</div>
-          <div className="grid grid-cols-2 gap-3 flex-1 max-h-[70vh]">
-            {question.answers.map((a, i) => {
-              const isSelected = a.id === selectedAnswerId;
-              const isCorrect = a.id === correctAnswerId;
-              const isRevealed = phase === "reveal";
-              return (
-                <button
-                  key={a.id}
-                  onClick={() => submitVote(a.id)}
-                  disabled={phase !== "voting"}
-                  className={`${ANSWER_COLORS[i]} rounded-lg text-white font-bold text-2xl flex items-center justify-center
-                    ${phase === "voted" && !isSelected ? "opacity-30" : ""}
-                    ${isRevealed && !isCorrect ? "opacity-30" : ""}
-                    ${isRevealed && isCorrect ? "ring-4 ring-white" : ""}
-                    ${isSelected ? "ring-4 ring-white" : ""}
-                    disabled:cursor-not-allowed transition-all
-                  `}
-                >
-                  {ANSWER_LETTERS[i]}
-                </button>
-              );
-            })}
+      <main className="flex flex-1 flex-col px-4 py-4">
+        {phase === "waiting" && (
+          <div className="m-auto flex w-full max-w-md flex-col items-center gap-6">
+            <p className="font-pixel text-pixel-base text-center text-ink">
+              Waiting for the host
+            </p>
+            <LobbyLeaderboard
+              players={playerController.getPlayers()}
+              currentPlayerId={playerId}
+            />
           </div>
-          {phase === "voted" && (
-            <div className="text-center mt-4 text-lg">
-              Answer locked in — waiting for others...
-            </div>
-          )}
-          {phase === "reveal" && selectedAnswerId === correctAnswerId && (
-            <div className="text-center mt-4 text-2xl text-green-400 font-bold">
-              Correct! 🎉
-            </div>
-          )}
-          {phase === "reveal" && selectedAnswerId !== correctAnswerId && selectedAnswerId !== null && (
-            <div className="text-center mt-4 text-2xl text-red-400 font-bold">
-              Not this time
-            </div>
-          )}
-        </>
-      )}
+        )}
 
-      {phase === "ended" && (
-        <div className="m-auto text-center">
-          <div className="text-4xl font-bold">Game Over!</div>
-        </div>
-      )}
-    </div>
+        {phase === "get_ready" && question && (
+          <div className="flex flex-1 flex-col items-center gap-5">
+            <span className="font-pixel text-pixel-xs text-text-muted">
+              GET READY
+            </span>
+            <h2
+              className={cn(
+                "w-full border-4 border-ink bg-surface shadow-pixel",
+                "px-5 py-6 text-center font-pixel text-pixel-base leading-relaxed text-ink"
+              )}
+            >
+              {question.text}
+            </h2>
+          </div>
+        )}
+
+        {(phase === "voting" || phase === "voted" || revealed) && question && (
+          <div className="flex flex-1 flex-col gap-4">
+            {/* Small — the full question is on the big screen. The
+                phone's job is four large tap targets. */}
+            <p className="px-1 text-center text-sm text-text-muted">
+              {question.text}
+            </p>
+
+            <div className="grid flex-1 grid-cols-2 gap-3">
+              {question.answers.map((a, i) => (
+                <AnswerCard
+                  key={a.id}
+                  index={i}
+                  selected={a.id === selectedAnswerId}
+                  correct={revealed && a.id === correctAnswerId}
+                  revealed={revealed}
+                  disabled={phase !== "voting"}
+                  onClick={() => submitVote(a.id)}
+                  className="h-full"
+                />
+              ))}
+            </div>
+
+            {phase === "voted" && (
+              <div
+                role="status"
+                className={cn(
+                  "border-4 border-ink bg-surface px-4 py-3 text-center",
+                  "font-pixel text-pixel-xs uppercase text-ink"
+                )}
+              >
+                Locked in — waiting for everyone else
+              </div>
+            )}
+
+            {revealed && selectedAnswerId !== null && (
+              <div
+                role="status"
+                className={cn(
+                  "border-4 border-ink px-4 py-3 text-center",
+                  "font-pixel text-pixel-sm uppercase text-cloud",
+                  gotItRight ? "bg-success" : "bg-accent"
+                )}
+              >
+                {gotItRight ? "Correct" : "Not this time"}
+              </div>
+            )}
+
+            {revealed && selectedAnswerId === null && (
+              <div
+                role="status"
+                className={cn(
+                  "border-4 border-ink bg-surface px-4 py-3 text-center",
+                  "font-pixel text-pixel-xs uppercase text-text-muted"
+                )}
+              >
+                No answer this round
+              </div>
+            )}
+          </div>
+        )}
+
+        {phase === "ended" && (
+          <div className="m-auto flex w-full max-w-md flex-col items-center gap-6">
+            <p className="font-pixel text-pixel-lg text-ink">Game over</p>
+            <Leaderboard
+              players={playerController.getPlayers()}
+              currentPlayerId={playerId}
+            />
+          </div>
+        )}
+
+        {phase === "score" && (
+          <div className="flex flex-1 flex-col items-center gap-5">
+            <span className="font-pixel text-pixel-xs text-text-muted">
+              STANDINGS
+            </span>
+            <div className="w-full max-w-3xl flex-1 min-h-0 overflow-y-auto">
+              <Leaderboard players={playerController.getPlayers()} />
+            </div>
+          </div>
+        )}
+        
+      </main>
+    </Screen>
   );
 }

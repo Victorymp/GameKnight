@@ -1,18 +1,17 @@
 import { useEffect, useState } from "react";
+import { cn } from "../../lib/utils";
 import gameController from "../../components/controllers/game-controller";
-import type { Player, QuestionView, QuestionImage } from "../../models/model";
-import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
 import playerController from "../../components/controllers/player-controller";
-import { Timer } from "../../components/ui/Timer";
-import { QuestionCard } from "../../components/ui/QuestionCard";
+import { connectWebSocket, subscribeToGame } from "../../websocket/websocket";
 import { fetchQuestionImage } from "../../api/api-controller";
+import { Screen, Header } from "../../components/ui/Screen";
+import { Button } from "../../components/ui/Button";
+import { PixelTimer } from "../../components/ui/AnswerCard";
+import { QuestionCard } from "../../components/ui/QuestionCard";
 import Leaderboard from "../../components/ui/Leaderboard";
 import LobbyLeaderboard from "../../components/ui/LobbyLeaderboard";
+import type { Player, QuestionView, QuestionImage, HostPhase as Phase } from "../../models/model";
 
-type Phase = "lobby" | "get_ready" | "question" | "reveal" | "ended";
-
-
-// type PlayerView = { id: string; name: string };
 
 export default function GamePlay() {
   const game = gameController.getGame();
@@ -27,10 +26,8 @@ export default function GamePlay() {
   const [correctAnswerId, setCorrectAnswerId] = useState<number | null>(null);
   const [phaseStart, setPhaseStart] = useState<number>(0);
   const [phaseDuration, setPhaseDuration] = useState<number>(30_000);
-  const [msLeft, setMsLeft] = useState<number>(30_000);  
-  const [questionImage, setQuestionImage] = useState<QuestionImage |null>(null);
-
-  
+  const [msLeft, setMsLeft] = useState<number>(30_000);
+  const [questionImage, setQuestionImage] = useState<QuestionImage | null>(null);
 
   useEffect(() => {
     setTotalQuestions(game?.questions.length ?? 0);
@@ -49,25 +46,18 @@ export default function GamePlay() {
     return playerController.subscribe(setPlayers);
   }, []);
 
-
   useEffect(() => {
-    if (!question?.id) {
+    if (!question?.id || !question.hasImage) {
       setQuestionImage(null);
       return;
     }
-    if (!question.hasImage) {
-      setQuestionImage(null);
-      return;
-    }
-      let cancelled = false;
-      fetchQuestionImage(question.id).then((data) => {
-        if (cancelled) return;
-        setQuestionImage(data);
-      });
-      console.log(`Question Image set: ${question.id}`);
-
-      return () => { cancelled = true; };
-    }, [question?.id, question?.hasImage]);
+    let cancelled = false;
+    fetchQuestionImage(question.id).then((data) => {
+      if (cancelled) return;
+      setQuestionImage(data);
+    });
+    return () => { cancelled = true; };
+  }, [question?.id, question?.hasImage]);
 
   useEffect(() => {
     if (!game?.gameCode) return;
@@ -75,7 +65,7 @@ export default function GamePlay() {
     let off: (() => void) | undefined;
     connectWebSocket().then(() => {
       off = subscribeToGame(game.gameCode, (msg) => {
-        console.log(`Message type: ${msg?.type}`);
+        console.log(`Msg type: ${msg.type}`);
         switch (msg?.type) {
           case "player:list":
             playerController.setPlayers(
@@ -99,11 +89,14 @@ export default function GamePlay() {
             setCorrectAnswerId(null);
             setPhase("get_ready");
             break;
-          case "leaderboard:update":
+          case "score:show":
             if (msg.payload.players) {
-                playerController.setPlayers(msg.payload.players);
-              }
-            break
+              playerController.setPlayers(msg.payload.players);
+            }
+            setPhaseDuration(msg.payload.phaseDurationMs);
+            setPhaseStart(Date.now());
+            setPhase("score");
+            break;
           case "question:show":
             setQuestion(msg.payload.question);
             setQuestionIndex(msg.payload.questionIndex);
@@ -135,8 +128,8 @@ export default function GamePlay() {
         }
       });
     });
-    
-    return () => { 
+
+    return () => {
       off?.();
       playerController.clear();
     };
@@ -149,95 +142,158 @@ export default function GamePlay() {
     });
   }
 
-  if (!game) return <div className="p-8">No game loaded.</div>;
+  if (!game) {
+    return (
+      <Screen>
+        <Header />
+        <main className="flex flex-1 items-center justify-center">
+          <p className="font-pixel text-pixel-sm text-text-muted">
+            No game loaded
+          </p>
+        </main>
+      </Screen>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-8">
-      <header className="flex justify-between items-center mb-6">
-        <div>
-          <div className="text-sm opacity-70">Game code</div>
-          <div className="text-3xl font-mono font-bold">{game.gameCode}</div>
-        </div>
-        <div className="text-right">
-          <div className="text-sm opacity-70">Players</div>
-          <div className="text-3xl font-bold">{players.length}</div>
-        </div>
-      </header>
+    <Screen>
+      <Header />
 
-      {phase === "lobby" && (
-        <div className="text-center mt-20">
-          <h1 className="text-4xl font-bold mb-6">Scan QR to join</h1>
-          {game.qrImageBase64 && (
-            <img
-              src={`data:image/png;base64,${game.qrImageBase64}`}
-              alt="Join QR"
-              className="mx-auto w-64 h-64 rounded-lg bg-white p-2"
-            />
-          )}
-          {/*<ul className="my-6 space-y-1">
-            {players.map((p) => (
-              <li key={p.id} className="text-lg">{p.name}</li>
-            ))}
-          </ul>*/}
-          <div className="mx-auto py-4">
-            <LobbyLeaderboard
-              players={playerController.getPlayers()}
-              />
-          </div>
-          <button
-            onClick={startGame}
-            disabled={players.length === 0}
-            className="mt-4 px-8 py-3 bg-green-500 rounded-lg text-xl font-bold disabled:opacity-40"
-          >
-            Start Game
-          </button>
-        </div>
-      )}
-
-      {phase === "get_ready" && question && (
-        <div className="flex flex-col items-center justify-center h-full w-full gap-4 px-6">
-          <div className="text-2xl mb-4">Get ready...</div>
-          <h2 className="text-3xl font-bold text-center">{question.text}</h2>
-          {questionImage && (
-            <img
-              src={`data:${questionImage.type};base64,${questionImage.content}`}
-              alt="Question"
-              className="max-h-64 rounded mt-6"
-            />
-          )}
-          <div className="w-full max-w-3xl flex-1 min-h-0 overflow-y-auto">
-            <Leaderboard players={playerController.getPlayers()} />
-          </div>       
-        </div>
-      )}
-
-      {(phase === "question" || phase === "reveal") && question && (
-        <>
-          <div className="mb-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span>Question {questionIndex + 1} of {totalQuestions}</span>
-              <span>{voterCount} / {players.length} voted</span>
+      <main className="flex flex-1 flex-col gap-6 px-6 py-6">
+        {/* Code + player count. Hard-bordered tiles, no rounded chips. */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-1.5">
+            <span className="font-pixel text-pixel-xs text-text-muted">
+              GAME CODE
+            </span>
+            <div className="flex gap-1.5">
+              {game.gameCode.split("").map((char, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "flex h-11 w-9 items-center justify-center",
+                    "border-4 border-ink bg-surface shadow-pixel-sm",
+                    "font-pixel text-pixel-base text-ink"
+                  )}
+                >
+                  {char}
+                </span>
+              ))}
             </div>
-            <Timer msLeft={msLeft} totalMs={phaseDuration} />
           </div>
 
-          <QuestionCard
-            question={question}
-            counts={counts}
-            correctAnswerId={correctAnswerId}
-            revealed={phase === "reveal"}
-            image={questionImage}
-          />
-        </>
-      )}
-
-      {phase === "ended" && (
-        <div className="text-center mt-20 gap-4">
-          <h1 className="text-5xl font-bold">Results</h1>
-          <Leaderboard 
-            players={playerController.getPlayers()}/>
+          <div className="flex flex-col items-end gap-1.5">
+            <span className="font-pixel text-pixel-xs text-text-muted">
+              PLAYERS
+            </span>
+            <span
+              className={cn(
+                "flex h-11 min-w-11 items-center justify-center px-3",
+                "border-4 border-ink bg-primary shadow-pixel-sm",
+                "font-pixel text-pixel-base text-ink"
+              )}
+            >
+              {players.length}
+            </span>
+          </div>
         </div>
-      )}
-    </div>
+
+        {phase === "lobby" && (
+          <div className="flex flex-1 flex-col items-center gap-6">
+            <h1 className="font-pixel text-pixel-lg text-ink">Scan to join</h1>
+
+            {game.qrImageBase64 && (
+              <img
+                src={`data:image/png;base64,${game.qrImageBase64}`}
+                alt="Scan this code to join the game"
+                className="h-64 w-64 border-4 border-ink bg-cloud p-2 shadow-pixel"
+                style={{ imageRendering: "pixelated" }}
+              />
+            )}
+
+            <div className="w-full max-w-md">
+              <LobbyLeaderboard players={playerController.getPlayers()} />
+            </div>
+
+            <Button
+              size="lg"
+              onClick={startGame}
+              disabled={players.length === 0}
+            >
+              {players.length === 0 ? "Waiting for players" : "Start game"}
+            </Button>
+          </div>
+        )}
+
+        {phase === "get_ready" && question && (
+          <div className="flex flex-1 flex-col items-center gap-5">
+            <span className="font-pixel text-pixel-xs text-text-muted">
+              GET READY
+            </span>
+
+            <h2
+              className={cn(
+                "w-full border-4 border-ink bg-surface shadow-pixel-lg",
+                "px-6 py-8 text-center font-pixel text-pixel-lg leading-relaxed text-ink"
+              )}
+            >
+              {question.text}
+            </h2>
+
+            {questionImage && (
+              <img
+                src={`data:${questionImage.type};base64,${questionImage.content}`}
+                alt=""
+                className="max-h-64 border-4 border-ink"
+                style={{ imageRendering: "pixelated" }}
+              />
+            )}
+          </div>
+        )}
+
+        {(phase === "question" || phase === "reveal") && question && (
+          <div className="flex flex-1 flex-col gap-4">
+            <div className="flex justify-between font-pixel text-pixel-xs text-text-muted">
+              <span>
+                QUESTION {questionIndex + 1} / {totalQuestions}
+              </span>
+              <span>
+                {voterCount} / {players.length} VOTED
+              </span>
+            </div>
+
+            <PixelTimer msLeft={msLeft} totalMs={phaseDuration} />
+
+            <QuestionCard
+              question={question}
+              counts={counts}
+              correctAnswerId={correctAnswerId}
+              revealed={phase === "reveal"}
+              image={questionImage}
+            />
+          </div>
+        )}
+
+        {phase === "ended" && (
+          <div className="flex flex-1 flex-col items-center gap-6">
+            <h1 className="font-pixel text-pixel-xl text-ink">Results</h1>
+            <div className="w-full max-w-3xl flex-1 min-h-0 overflow-y-auto">
+              <Leaderboard players={playerController.getPlayers()} />
+            </div>
+          </div>
+        )}
+
+        {phase === "score" && (
+          <div className="flex flex-1 flex-col items-center gap-5">
+            <span className="font-pixel text-pixel-xs text-text-muted">
+              STANDINGS
+            </span>
+            <div className="w-full max-w-3xl flex-1 min-h-0 overflow-y-auto">
+              <Leaderboard players={playerController.getPlayers()} />
+            </div>
+          </div>
+        )}
+      </main>
+    </Screen>
   );
 }
