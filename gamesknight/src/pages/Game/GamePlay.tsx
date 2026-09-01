@@ -248,6 +248,14 @@ export default function GamePlay() {
                 style={{ imageRendering: "pixelated" }}
               />
             )}
+            <div className="flex flex-1 flex-col items-center gap-5">
+              <span className="font-pixel text-pixel-xs text-text-muted">
+                STANDINGS
+              </span>
+              <div className="w-full max-w-3xl flex-1 min-h-0 overflow-y-auto">
+                <Leaderboard players={playerController.getPlayers()} />
+              </div>
+            </div>
           </div>
         )}
 
