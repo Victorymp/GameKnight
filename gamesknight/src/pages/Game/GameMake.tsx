@@ -324,27 +324,12 @@ export default function GameMake() {
                                   "IMAGE"
                                 )}
               />
-              {/* //<input
-              //   type="file"
-              //   accept="image/*"
-              //   onChange={(e) =>
-              //     handleImageGameChange(
-              //       e.target.files?.[0] ?? null,
-              //       "IMAGE"
-              //     )
-              //   }
-              // /> */}
 
               {gameImage && (
                 <ImagePreview 
                   src={imagePreview(gameImage)}
                   title="Quiz"
                 />
-                // <img
-                //   src={imagePreview(gameImage)}
-                //   alt="Quiz"
-                //   className="max-h-40 rounded border"
-                // />
               )}
             </div>
           </Card>

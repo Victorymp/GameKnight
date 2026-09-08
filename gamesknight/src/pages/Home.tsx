@@ -13,7 +13,7 @@ const ACCENT = "#EF476F";     // accent
 const INK = "#10203A";
 
 /* Routes — adjust to match your router. */
-const ROUTE_HOST = "/games";
+const ROUTE_HOST = "/";
 const ROUTE_JOIN = "/join";
 const ROUTE_DISCOVER = "/discover";
 

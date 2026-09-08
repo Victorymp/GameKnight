@@ -96,7 +96,7 @@ public class Question {
     }
     
     public void setImages() {
-    	if (images.size() > 0) images = new GameKnightStorage().setImage(images);
+    	if (images.size() > 0) this.images = new GameKnightStorage().setImage(images);
     }
     
     public void setImages(List<Image> imageImport) {

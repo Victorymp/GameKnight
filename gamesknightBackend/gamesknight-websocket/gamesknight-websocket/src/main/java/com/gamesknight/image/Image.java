@@ -61,6 +61,7 @@ public class Image {
 		this.path = blobName;
 		this.content = base64Data;
 		this.type = type;
+		this.blobName = new GameKnightStorage().generateBlobName(type);
 	}
 	
 	public Image(ImageRequest request) {
@@ -116,8 +117,13 @@ public class Image {
 		this.question = question;
 	}
 	
-	public Album getAlbum() { return album; }
-	public void setAlbum(Album album) { this.album = album; }
+	public Album getAlbum() { 
+		return album; 
+	}
+	
+	public void setAlbum(Album album) { 
+		this.album = album; 
+	}
 
 	public boolean isThumbnails() {
 		return isThumbnails;
@@ -142,10 +148,6 @@ public class Image {
 	}
 	public void setContent(String content) {
 		this.content = content;
-	}
-	
-	public void setConent(byte[] imageBytes) {
-		this.content = new String(imageBytes, StandardCharsets.UTF_8);
 	}
 
 	public String getType() {
