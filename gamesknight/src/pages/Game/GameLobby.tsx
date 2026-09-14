@@ -89,6 +89,7 @@ export default function GameLobby() {
             break;
           case "game:reset":
             playerController.clear();
+            // gameController.reset();
             break;
         }
       });
@@ -98,9 +99,9 @@ export default function GameLobby() {
   }, [gameCode]);
 
   function beginGame() {
-    if (!gameCode) { setError("No game loaded."); return; }
+    if (!game) { setError("No game loaded."); return; }
     setError(undefined);
-    navigate(`/game/${gameCode}/host`);
+    navigate(`/game/${gameController.getGame()?.oneTimeGameCode}/host`);
   }
 
   return (

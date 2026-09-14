@@ -155,9 +155,9 @@ export function subscribeToUserQueue(
   return () => sub.unsubscribe();
 }
 
-export function subscribeToGame(gameCode: string, cb: (msg: any) => void): () => void {
+export function subscribeToGame(oneTimeGameCode: string, cb: (msg: any) => void): () => void {
   if (!stompClient?.connected) throw new Error("WebSocket not connected");
-  const sub = stompClient.subscribe(`/topic/game/${gameCode}`, (frame) => {
+  const sub = stompClient.subscribe(`/topic/game/${oneTimeGameCode}`, (frame) => {
     try { cb(JSON.parse(frame.body)); } catch { cb(frame.body); }
   });
   return () => sub.unsubscribe();

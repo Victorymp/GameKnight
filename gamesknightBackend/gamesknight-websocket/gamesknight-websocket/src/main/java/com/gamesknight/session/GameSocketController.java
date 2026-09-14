@@ -24,9 +24,9 @@ public class GameSocketController {
         this.broker = broker;
     }
 
-    @MessageMapping("/game/{gameCode}/join")
+    @MessageMapping("/game/{oneTimeGameCode}/join")
     public void join(
-            @DestinationVariable String gameCode,
+            @DestinationVariable String oneTimeGameCode,
             @Payload Map<String, Object> payload,
             SimpMessageHeaderAccessor headers
     ) {
@@ -34,7 +34,7 @@ public class GameSocketController {
         String sessionId = headers.getSessionId();
         String playerId = UUID.randomUUID().toString();
 
-        log.info("JOIN received: gameCode={} name={} sessionId={}", gameCode, name, sessionId);
+        log.info("JOIN received: oneTimeGameCode={} name={} sessionId={}", oneTimeGameCode, name, sessionId);
 
         try {
             sessionService.playerJoin(gameCode, playerId, name);

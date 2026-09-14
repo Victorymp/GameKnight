@@ -45,6 +45,8 @@ public class Game {
     private String gameDescription;
     @Transient
     private String qrImageBase64;
+    @Transient
+    private String oneTimeGameCode;
 
     @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
@@ -68,6 +70,15 @@ public class Game {
     public Game(String gameCode) {
     	this.gameCode = gameCode;
     }
+    
+    public void setOneTimeGameCode(String ot) {
+    	this.oneTimeGameCode = ot;
+    }
+    
+    public String getOneTimeGameCode() {
+    	return oneTimeGameCode;
+    }
+    
     public Long getId() {
         return id;
     }
@@ -164,7 +175,7 @@ public class Game {
     }
 
     public Game createGame() {
-        String gameUrl = API_URL + "/player/join/" + gameCode;
+        String gameUrl = getGameUrl(gameCode);
         try {
             String qrBase64 = generateQrcode(gameUrl);
             String blobName = "qr-" + gameCode + ".png";
@@ -179,9 +190,12 @@ public class Game {
     }
     
     public void generateQrCode() throws Exception {
-    	String gameUrl = API_URL + "/player/join/" + gameCode;
+    	String gameUrl = getGameUrl(gameCode);
     	gameQrB64 = generateQrcode(gameUrl);
-    	
+    }
+    
+    public String getGameUrl(String gameOT) {
+    	return API_URL + "/player/join/" + gameOT;
     }
 
     public String generateQrcode(String gameUrl) throws Exception {
@@ -223,6 +237,7 @@ public class Game {
                 ", gameQrB64='" + truncate(gameQrB64, 60) + '\'' +
                 ", questionCount=" + (questions == null ? 0 : questions.size()) +
                 ", qrImageBase64Length=" + (qrImageBase64 == null ? 0 : qrImageBase64.length()) +
+                ", oneTimeGameCode=" + (oneTimeGameCode == null ? "null": oneTimeGameCode)+
                 '}';
     }
 

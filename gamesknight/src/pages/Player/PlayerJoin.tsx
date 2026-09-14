@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { Input } from "../../components/ui/Input";
 import { Screen, Header } from "../../components/ui/Screen";
-import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/Button";
 import { CodeInput } from "../../components/ui/CodeInput";
 

@@ -37,10 +37,15 @@ public class GameService {
     @Transactional
     public Game startGame(String gameCode){
         Game game = new Game();
+        String oneTimeGameCode = String.valueOf(100000 + (int) (Math.random() * 999999));
+        logger.info("One time code: "+oneTimeGameCode);
         String qrBlobName = null;
 		try {
 			game = gameRepository.findByGameCodeWithQuestions(gameCode)
 		            .orElseThrow(() -> new NotFoundException());
+			
+			game.setOneTimeGameCode(oneTimeGameCode);
+			
 			
 			List<Image> images = imageRepository.findByGameId(game.getId());
 			
@@ -97,8 +102,10 @@ public class GameService {
     @Transactional
     public Game startGame(Game game, String blobName) {
         try {
-            byte[] qrBytes = new GameKnightStorage().getQrIamage(blobName);
-            String qrImageBase64 = Base64.getEncoder().encodeToString(qrBytes);
+        	String gameUrl = game.getGameUrl(game.getOneTimeGameCode());
+        	String qr = game.generateQrcode(gameUrl);
+//            byte[] qrBytes = new GameKnightStorage().getQrIamage(blobName);
+            String qrImageBase64 = qr;
             game.setQrImageBase64(qrImageBase64);
         } catch (BlobNotFoundException e) {
             // Blob missing — regenerate

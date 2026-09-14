@@ -30,6 +30,7 @@ export interface GameData extends GameQr {
   images: Image[];
   albumId?: number;
   gameDescription?: string;
+  oneTimeGameCode?: string;
 }
 
 export interface Answer {

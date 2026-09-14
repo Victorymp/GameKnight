@@ -167,7 +167,7 @@ export default function GamePlay() {
               GAME CODE
             </span>
             <div className="flex gap-1.5">
-              {game.gameCode.split("").map((char, i) => (
+              {(game.oneTimeGameCode ?? "").split("").map((char, i) => (
                 <span
                   key={i}
                   className={cn(

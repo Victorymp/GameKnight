@@ -81,9 +81,9 @@ public class GameController {
         return message;
     }
 
-    @MessageMapping("/game/{gameCode}/relay")
-    @SendTo("/topic/game/{gameCode}")
-    public Object relay(@DestinationVariable String gameCode, Object message) {
+    @MessageMapping("/game/{oneTimeGameCode}/relay")
+    @SendTo("/topic/game/{oneTimeGameCode}")
+    public Object relay(@DestinationVariable String oneTimeGameCode, Object message) {
         return message; // simple relay; add validation as needed
         
     }

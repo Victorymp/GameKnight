@@ -133,14 +133,14 @@ class GameController {
     }
   }
 
-  async joinGame(gameCode: string, name: string): Promise<{ playerId: string; name: string }> {
+  async joinGame(oneTimeGameCode: string, name: string): Promise<{ playerId: string; name: string }> {
     await connectWebSocket();
 
     return new Promise((resolve, reject) => {
       console.log("About to call subscribeToUserQueue, function is:", typeof subscribeToUserQueue);
       const off = subscribeToUserQueue("/user/queue/join", (msg) => {
         console.log("Got message on /user/queue/join:", msg);
-        if (msg?.type === "join:ack" && msg?.payload?.gameCode === gameCode) {
+        if (msg?.type === "join:ack" && msg?.payload?.gameCode === oneTimeGameCode) {
           off();
           clearTimeout(timeoutId);
           resolve({
@@ -157,7 +157,7 @@ class GameController {
 
       // Small delay to let subscription register on server
       setTimeout(() => {
-        sendGameSocketMessage(`/app/game/${gameCode}/join`, { name });
+        sendGameSocketMessage(`/app/game/${oneTimeGameCode}/join`, { name });
       }, 200);
     });
   }
