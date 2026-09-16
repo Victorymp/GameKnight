@@ -112,7 +112,7 @@ export default function PlayerVotePage() {
     setSelectedAnswerId(answerId);
     setPhase("voted");
     gameController.send({
-      destination: `/app/game/${gameCode}/vote`,
+      destination: `/app/game/${gameController.getGame()?.oneTimeGameCode}/vote`,
       body: { playerId, questionId: question.id, answerId },
     });
   }

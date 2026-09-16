@@ -140,7 +140,7 @@ class GameController {
       console.log("About to call subscribeToUserQueue, function is:", typeof subscribeToUserQueue);
       const off = subscribeToUserQueue("/user/queue/join", (msg) => {
         console.log("Got message on /user/queue/join:", msg);
-        if (msg?.type === "join:ack" && msg?.payload?.gameCode === oneTimeGameCode) {
+        if (msg?.type === "join:ack" && msg?.payload?.oneTimeGameCode === oneTimeGameCode) {
           off();
           clearTimeout(timeoutId);
           resolve({

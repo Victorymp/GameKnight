@@ -81,7 +81,7 @@ export default function GameLobby() {
 
     connectWebSocket().then(() => {
       if (cancelled) return;
-      sendGameSocketMessage(`/app/game/${gameCode}/reset`, {});
+      sendGameSocketMessage(`/app/game/${gameController.getGame()?.oneTimeGameCode}/reset`, {});
       off = subscribeToGame(gameCode, (msg) => {
         switch (msg?.type) {
           case "player:list":

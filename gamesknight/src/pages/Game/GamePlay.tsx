@@ -137,7 +137,7 @@ export default function GamePlay() {
 
   function startGame() {
     gameController.send({
-      destination: `/app/game/${game?.gameCode}/start`,
+      destination: `/app/game/${gameController.getGame()?.oneTimeGameCode}/start`,
       body: {},
     });
   }

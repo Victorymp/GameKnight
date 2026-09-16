@@ -2,12 +2,15 @@ import { useState } from "react";
 import { Screen, Header } from "../../components/ui/Screen";
 import { Button } from "../../components/ui/Button";
 import { CodeInput } from "../../components/ui/CodeInput";
+import { useNavigate } from "react-router-dom";
 
 
 export function PlayerJoin(){
   const [manualCode, setManualCode] = useState<string>("");
+  const navigate = useNavigate();
   function handleJoin(){
     console.log(manualCode);
+    navigate(`/player/join/${manualCode}`)
   }
   return (
     <Screen>
