@@ -16,6 +16,7 @@ public class GameSession {
     private final String gameCode;
     private final Game game;
     private final ReentrantLock lock = new ReentrantLock();
+    private final String oneTimeGameCode;
 
     private GamePhase phase = GamePhase.LOBBY;
     private int currentQuestionIndex = -1;
@@ -35,6 +36,13 @@ public class GameSession {
     public GameSession(Game game) {
         this.gameCode = game.getGameCode();
         this.game = game;
+        this.oneTimeGameCode = game.getOneTimeGameCode();
+    }
+    
+    public GameSession() {
+        this.gameCode = "";
+        this.game = new Game();
+        this.oneTimeGameCode = "";
     }
 
     public ReentrantLock lock() { return lock; }

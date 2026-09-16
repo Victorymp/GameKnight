@@ -14,6 +14,7 @@ import com.gamesknight.image.ImageRepository;
 import com.gamesknight.image.ImageService;
 import com.gamesknight.question.QuestionRepository;
 import com.gamesknight.storage.BlobNotFoundException;
+import com.gamesknight.storage.GameKnightCaching;
 import com.gamesknight.storage.GameKnightStorage;
 
 import jakarta.transaction.Transactional;
@@ -46,7 +47,6 @@ public class GameService {
 			
 			game.setOneTimeGameCode(oneTimeGameCode);
 			
-			
 			List<Image> images = imageRepository.findByGameId(game.getId());
 			
 			for (Image i: images) {
@@ -61,46 +61,14 @@ public class GameService {
 			e.printStackTrace();
 		}
 
-
         // Populates .answers on the same managed Question instances above
         questionRepository.findByGameCodeWithAnswers(gameCode);
         if (qrBlobName == null || qrBlobName.isEmpty()) {
         	qrBlobName = "qr-" + game.getGameCode() + ".png";
         }
-      
-        return startGame(game,qrBlobName);
-    }
-    
-    @Transactional
-    public Game getQr(String gameCode) {
-    	Game game = new Game();
-    	try {
-    		game = gameRepository.findByGameCode(gameCode)
-			        .orElseThrow(() -> new NotFoundException());
-    		return game;
-    	} catch (NotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		}
-    }
-    
-    @Transactional
-    public Game getGame(String gameCode) {
-		Game game = new Game();
-		try {
-			game = gameRepository.findByGameCode(gameCode)
-			        .orElseThrow(() -> new NotFoundException());
-			return game;
-		} catch (NotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		}	
-    }
-    
-    @Transactional
-    public Game startGame(Game game, String blobName) {
+        GameKnightCaching cache = GameKnightCaching.getInstance();
+        cache.addGame(oneTimeGameCode, game);
+        
         try {
         	String gameUrl = game.getGameUrl(game.getOneTimeGameCode());
         	String qr = game.generateQrcode(gameUrl);
@@ -117,6 +85,38 @@ public class GameService {
         } catch (Exception e) {
             logger.error("Failed to fetch QR code for game {}", game.getGameCode(), e);
         }
+      
         return game;
     }
+    
+    
+    @Transactional
+    public Game getGameSession(String oneTimeGameCode, String i) {
+		try {
+			Game game = GameKnightCaching.getInstance().getGame(oneTimeGameCode);
+			if (game == null) {
+				throw new NotFoundException();
+			}
+			
+			return game;
+		} catch (NotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}	
+    }
+    
+    @Transactional
+    public Game getGameData(String gameCode) {
+		try {
+			Game game = gameRepository.findByGameCode(gameCode)
+					.orElseThrow(() -> new NotFoundException());
+			return game;
+		} catch (NotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}	
+    }
+    
 }

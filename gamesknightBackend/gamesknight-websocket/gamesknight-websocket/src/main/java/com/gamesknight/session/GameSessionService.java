@@ -8,6 +8,7 @@ import com.gamesknight.image.ImageService;
 import com.gamesknight.player.Player;
 import com.gamesknight.question.Question;
 import com.gamesknight.question.QuestionRepository;
+import com.gamesknight.storage.GameKnightCaching;
 import com.gamesknight.storage.GameKnightStorage;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -53,13 +54,19 @@ public class GameSessionService {
     }
 
     @Transactional(readOnly = true)
-    public GameSession getOrCreate(String gameCode) {
-        return sessions.computeIfAbsent(gameCode, code -> {
-            Game g = gameRepository.findByGameCodeWithQuestions(code)
-                    .orElseThrow(() -> new IllegalStateException("Unknown game: " + code));
-
+    public GameSession getOrCreate(String oneTimeGameCode) {
+    	
+    	GameKnightCaching gc = GameKnightCaching.getInstance();
+    	    	
+        return sessions.computeIfAbsent(oneTimeGameCode, code -> {
+        	Game g = gc.getGame(code); 
+        	if (g == null) {
+                g = gameRepository.findByGameCodeWithQuestions(g.getGameCode())
+                        .orElseThrow(() -> new IllegalStateException("Unknown game: " + code));
+        	}
+            g.setOneTimeGameCode(code);
             // Force answer hydration
-            questionRepository.findByGameCodeWithAnswers(code);
+            questionRepository.findByGameCodeWithAnswers(g.getGameCode());
 
             // Force initialization of each answer collection so it survives the closed session
             for (Question q : g.getQuestions()) {
@@ -71,17 +78,17 @@ public class GameSessionService {
         });
     }
     @Transactional
-    public void playerJoin(String gameCode, String playerId, String name) {
-        GameSession s = getOrCreate(gameCode);
+    public void playerJoin(String oneTimeGameCode, String playerId, String name) {
+        GameSession s = getOrCreate(oneTimeGameCode);
         s.lock().lock();
         try {
             s.addPlayer(playerId, name);
-            broadcast(gameCode, "player:list", Map.of("players", playerListPayload(s)));
+            broadcast(oneTimeGameCode, "player:list", Map.of("players", playerListPayload(s)));
         } finally { s.lock().unlock(); }
     }
     @Transactional
-    public void startGame(String gameCode) {
-        GameSession s = getOrCreate(gameCode);
+    public void startGame(String oneTimeGameCode) {
+        GameSession s = getOrCreate(oneTimeGameCode);
         s.lock().lock();
         try {
             if (s.getPhase() != GamePhase.LOBBY) return;
@@ -89,8 +96,8 @@ public class GameSessionService {
         } finally { s.lock().unlock(); }
     }
     @Transactional
-    public void submitVote(String gameCode, String playerId, long questionId, long answerId) {
-        GameSession s = sessions.get(gameCode);
+    public void submitVote(String oneTimeGameCode, String playerId, long questionId, long answerId) {
+        GameSession s = sessions.get(oneTimeGameCode);
         if (s == null) return;
         s.lock().lock();
         try {
@@ -114,7 +121,7 @@ public class GameSessionService {
                 if (p != null) p.addScore(points);
             }
 
-            broadcast(gameCode, "vote:update", Map.of(
+            broadcast(oneTimeGameCode, "vote:update", Map.of(
                     "questionId", questionId,
                     "counts", s.currentCounts(),
                     "voterCount", s.currentVoterCount(),
@@ -277,9 +284,9 @@ public class GameSessionService {
                 .toList();
     }
 
-    private void broadcast(String gameCode, String type, Object payload) {
+    private void broadcast(String oneTimeGameCode, String type, Object payload) {
         broker.convertAndSend(
-            "/topic/game/" + gameCode,
+            "/topic/game/" + oneTimeGameCode,
             (Object) Map.of("type", type, "payload", payload)
         );
     }
@@ -328,11 +335,14 @@ public class GameSessionService {
         ));
     }
     
-    public void resetGame(String gameCode) {
-        GameSession existing = sessions.remove(gameCode);
+    public void resetGame(String oneTimeGameCode) {
+    	GameKnightCaching gc = GameKnightCaching.getInstance();
+    	Game g = gc.getGame(oneTimeGameCode);
+    	String gameCode = g.getGameCode();
+        GameSession existing = sessions.remove(oneTimeGameCode);
         if (existing != null) {
             log.info("Reset game {}: removed session with {} players in phase {}",
-                    gameCode, existing.getPlayers().size(), existing.getPhase());
+            		oneTimeGameCode, existing.getPlayers().size(), existing.getPhase());
         }
         // Broadcast reset so any connected clients wipe their local state
         broadcast(gameCode, "game:reset", Map.of("gameCode", gameCode));

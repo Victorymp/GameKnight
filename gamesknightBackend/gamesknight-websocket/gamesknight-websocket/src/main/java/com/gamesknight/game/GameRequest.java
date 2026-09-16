@@ -6,6 +6,7 @@ import com.gamesknight.image.ImageRequest;
 import com.gamesknight.question.QuestionRequest;
 
 public class GameRequest {
+	private String oneTimeGameCode;
     private String gameCode;
     private String gameTitle;
     private String gameDescription;
@@ -17,6 +18,9 @@ public class GameRequest {
     
     public String getGameTitle() { return gameTitle; }
     public void setGameTitle(String gameTitle) {this.gameTitle = gameTitle;}
+    
+    public String getOneTimeGameCode() { return oneTimeGameCode;}
+    public void setOneTimeGameCode(String oneTimeGameCode) {this.oneTimeGameCode = oneTimeGameCode;}
 
     public List<QuestionRequest> getQuestions() { return questions; }
     public void setQuestions(List<QuestionRequest> questions) { this.questions = questions; }

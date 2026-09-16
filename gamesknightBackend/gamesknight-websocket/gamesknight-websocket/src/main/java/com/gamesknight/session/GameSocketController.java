@@ -37,7 +37,7 @@ public class GameSocketController {
         log.info("JOIN received: oneTimeGameCode={} name={} sessionId={}", oneTimeGameCode, name, sessionId);
 
         try {
-            sessionService.playerJoin(gameCode, playerId, name);
+            sessionService.playerJoin(oneTimeGameCode, playerId, name);
             log.info("JOIN playerJoin completed for {}", playerId);
         } catch (Exception e) {
             log.error("JOIN playerJoin threw", e);
@@ -48,7 +48,7 @@ public class GameSocketController {
             broker.convertAndSendToUser(
                     sessionId, "/queue/join",
                     Map.of("type", "join:ack", "payload", Map.of(
-                            "playerId", playerId, "gameCode", gameCode, "name", name
+                            "playerId", playerId, "oneTimeGameCode", oneTimeGameCode, "name", name
                     )),
                     createHeaders(sessionId)
             );
@@ -58,24 +58,24 @@ public class GameSocketController {
         }
     }
 
-    @MessageMapping("/game/{gameCode}/start")
-    public void start(@DestinationVariable String gameCode) {
-    	log.info("START received for gameCode={}", gameCode);
-        sessionService.startGame(gameCode);
+    @MessageMapping("/game/{oneTimeGameCode}/start")
+    public void start(@DestinationVariable String oneTimeGameCode) {
+    	log.info("START received for gameCode={}", oneTimeGameCode);
+        sessionService.startGame(oneTimeGameCode);
     }
     
-    @MessageMapping("/game/{gameCode}/reset")
-    public void reset(@DestinationVariable String gameCode) {
-        log.info("RESET received for gameCode={}", gameCode);
-        sessionService.resetGame(gameCode);
+    @MessageMapping("/game/{oneTimeGameCode}/reset")
+    public void reset(@DestinationVariable String oneTimeGameCode) {
+        log.info("RESET received for gameCode={}", oneTimeGameCode);
+        sessionService.resetGame(oneTimeGameCode);
     }
 
-    @MessageMapping("/game/{gameCode}/vote")
-    public void vote(@DestinationVariable String gameCode, @Payload Map<String, Object> payload) {
+    @MessageMapping("/game/{oneTimeGameCode}/vote")
+    public void vote(@DestinationVariable String oneTimeGameCode, @Payload Map<String, Object> payload) {
         String playerId = (String) payload.get("playerId");
         long questionId = ((Number) payload.get("questionId")).longValue();
         long answerId = ((Number) payload.get("answerId")).longValue();
-        sessionService.submitVote(gameCode, playerId, questionId, answerId);
+        sessionService.submitVote(oneTimeGameCode, playerId, questionId, answerId);
     }
 
     private MessageHeaders createHeaders(String sessionId) {

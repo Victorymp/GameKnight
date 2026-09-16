@@ -127,38 +127,15 @@ public class GameControllerApi {
     
     @PostMapping("/game")
     ResponseEntity<Game> getGame(@RequestBody GameRequest request) {
-	    logger.info("Gettinf game with code: {}", request.getGameCode());
+	    logger.info("Getting game with code: {}", request.getGameCode());
 	    String gameCode = request.getGameCode();
-	    Game chosenGame = gameService.getGame(gameCode);
+	    Game chosenGame = gameService.getGameData(gameCode);
 
 	    logger.info("Game found successfully with code: {}", chosenGame.getGameCode());
 	    logger.info("Game: {}",chosenGame.toString());
 	    return ResponseEntity
 	    		.status(HttpStatus.OK)
 	    		.body(chosenGame);
-    }
-    
-    ResponseEntity<String> generateqr(@RequestBody GameRequest request) {
-    	logger.info("Creating game code with code: {}", request.getGameCode());
-        logger.info(request.getGameCode());
-        logger.info("Game request");
-        logger.info(request.toString());
-        
-        Game newGame = new Game(request.getGameCode());
-        
-        newGame = gameService.getQr(newGame.getGameCode());
-        
-        if (newGame.getGameCode() == null ) {
-        	try {
-				newGame.generateQrCode();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-        }
-        
-        return ResponseEntity.ok(newGame.getGameQrB64());
-        
     }
 
     public EntityModel<Game> getSingleGame(Long id) {
