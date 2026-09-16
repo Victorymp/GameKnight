@@ -61,10 +61,12 @@ export default function GamePlay() {
 
   useEffect(() => {
     if (!game?.gameCode) return;
+    const oneTimeGameCode = gameController.getGame()?.oneTimeGameCode;
+    if (!oneTimeGameCode) return;
 
     let off: (() => void) | undefined;
     connectWebSocket().then(() => {
-      off = subscribeToGame(game.gameCode, (msg) => {
+      off = subscribeToGame(oneTimeGameCode, (msg) => {
         console.log(`Msg type: ${msg.type}`);
         switch (msg?.type) {
           case "player:list":

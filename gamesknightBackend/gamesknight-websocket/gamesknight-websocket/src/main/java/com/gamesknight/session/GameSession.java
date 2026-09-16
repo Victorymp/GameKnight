@@ -38,16 +38,14 @@ public class GameSession {
         this.game = game;
         this.oneTimeGameCode = game.getOneTimeGameCode();
     }
-    
-    public GameSession() {
-        this.gameCode = "";
-        this.game = new Game();
-        this.oneTimeGameCode = "";
-    }
 
     public ReentrantLock lock() { return lock; }
     public String getGameCode() { return gameCode; }
-    public Game getGame() { return game; }
+    public String getOneTimeGameCode() {
+		return oneTimeGameCode;
+	}
+
+	public Game getGame() { return game; }
     public GamePhase getPhase() { return phase; }
     public int getCurrentQuestionIndex() { return currentQuestionIndex; }
     public long getPhaseStartMs() { return phaseStartMs; }

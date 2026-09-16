@@ -43,32 +43,32 @@ public class GameController {
         log.info("Parsed type='{}', payload={}", type, payload);
 
         if ("game:join".equals(type)) {
-            String gameCode = payload.path("gameCode").asString();
+            String oneTimeGameCode = payload.path("oneTimeGameCode").asString();
             String playerId = payload.path("id").asString();
             String displayName = payload.path("displayName").asString();
 
-            log.info("game:join -> gameCode='{}', playerId='{}', displayName='{}'",
-                    gameCode, playerId, displayName);
+            log.info("game:join -> oneTimeGameCode='{}', playerId='{}', displayName='{}'",
+            		oneTimeGameCode, playerId, displayName);
 
-            if (gameCode == null || playerId == null) {
+            if (oneTimeGameCode == null || playerId == null) {
                 log.warn("Missing gameCode or playerId, falling back to echo. payload={}", payload);
                 return message;
             }
 
             Map<String, ObjectNode> players =
-                gamePlayers.computeIfAbsent(gameCode, k -> new LinkedHashMap<>());
+                gamePlayers.computeIfAbsent(oneTimeGameCode, k -> new LinkedHashMap<>());
 
             ObjectNode playerNode = objectMapper.createObjectNode();
             playerNode.put("id", playerId);
             playerNode.put("displayName", displayName);
             players.put(playerId, playerNode);
 
-            log.info("Game '{}' now has {} player(s): {}", gameCode, players.size(), players.keySet());
+            log.info("Game '{}' now has {} player(s): {}", oneTimeGameCode, players.size(), players.keySet());
 
             ObjectNode update = objectMapper.createObjectNode();
             update.put("type", "game:update");
             ObjectNode updatePayload = objectMapper.createObjectNode();
-            updatePayload.put("gameCode", gameCode);
+            updatePayload.put("oneTimeGameCode", oneTimeGameCode);
             updatePayload.putArray("players").addAll(players.values());
             update.set("payload", updatePayload);
 

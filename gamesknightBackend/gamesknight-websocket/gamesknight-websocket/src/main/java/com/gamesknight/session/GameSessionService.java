@@ -57,7 +57,9 @@ public class GameSessionService {
     public GameSession getOrCreate(String oneTimeGameCode) {
     	
     	GameKnightCaching gc = GameKnightCaching.getInstance();
-    	    	
+    	Game ga = gc.getGame(oneTimeGameCode);
+    	log.info("Cached game: "+ga);
+    	    	    	
         return sessions.computeIfAbsent(oneTimeGameCode, code -> {
         	Game g = gc.getGame(code); 
         	if (g == null) {
@@ -90,9 +92,11 @@ public class GameSessionService {
     public void startGame(String oneTimeGameCode) {
         GameSession s = getOrCreate(oneTimeGameCode);
         s.lock().lock();
+        log.info("Game phase: "+s.getPhase());
         try {
             if (s.getPhase() != GamePhase.LOBBY) return;
             advanceToQuestion(s, 0);
+            log.info("Game phase: "+s.getPhase());
         } finally { s.lock().unlock(); }
     }
     @Transactional
@@ -175,7 +179,7 @@ public class GameSessionService {
                     default -> {}
                 }
             } catch (Exception e) {
-                log.error("Tick error for game {}", s.getGameCode(), e);
+                log.error("Tick error for game {}", s.getOneTimeGameCode(), e);
             } finally { s.lock().unlock(); }
         }
     }
@@ -192,7 +196,7 @@ public class GameSessionService {
         questionPreview.put("text", q.getText());
         questionPreview.put("hasImage", q.getImages() != null && !q.getImages().isEmpty());
 
-        broadcast(s.getGameCode(), "question:preload", Map.of(
+        broadcast(s.getOneTimeGameCode(), "question:preload", Map.of(
             "questionIndex", index,
             "totalQuestions", s.getGame().getQuestions().size(),
             "phaseDurationMs", GameSession.GET_READY_DURATION_MS,
@@ -217,7 +221,7 @@ public class GameSessionService {
             })
             .toList());
 
-        broadcast(s.getGameCode(), "question:show", Map.of(
+        broadcast(s.getOneTimeGameCode(), "question:show", Map.of(
             "questionIndex", s.getCurrentQuestionIndex(),
             "totalQuestions", s.getGame().getQuestions().size(),
             "phaseDurationMs", GameSession.QUESTION_DURATION_MS,
@@ -237,7 +241,7 @@ public class GameSessionService {
         // Recompute ranks
         updateRanks(s);
 
-        broadcast(s.getGameCode(), "question:reveal", Map.of(
+        broadcast(s.getOneTimeGameCode(), "question:reveal", Map.of(
                 "questionId", q.getId(),
                 "correctAnswerId", correctId,
                 "counts", s.currentCounts(),
@@ -268,7 +272,7 @@ public class GameSessionService {
 
     private void enterEnded(GameSession s) {
         s.enterPhase(GamePhase.ENDED, s.getCurrentQuestionIndex());
-        broadcast(s.getGameCode(), "game:end", Map.of());
+        broadcast(s.getOneTimeGameCode(), "game:end", Map.of());
     }
 
     private List<Map<String, Object>> playerListPayload(GameSession s) {
@@ -326,7 +330,7 @@ public class GameSessionService {
         int next = s.getCurrentQuestionIndex() + 1;
         boolean isLast = next >= s.getGame().getQuestions().size();
 
-        broadcast(s.getGameCode(), "score:show", Map.of(
+        broadcast(s.getOneTimeGameCode(), "score:show", Map.of(
                 "questionIndex", s.getCurrentQuestionIndex(),
                 "totalQuestions", s.getGame().getQuestions().size(),
                 "phaseDurationMs", GameSession.SCORE_DURATION_MS,

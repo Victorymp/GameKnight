@@ -104,7 +104,7 @@ export default function PlayerVotePage() {
   }, [gameCode]);
 
   if (!playerId || !gameCode) {
-    return <Navigate to={`/player/join/${gameCode ?? ""}`} replace />;
+    return <Navigate to={`/player/join/${gameController.getGame()?.oneTimeGameCode ?? ""}`} replace />;
   }
 
   function submitVote(answerId: number) {
@@ -112,7 +112,7 @@ export default function PlayerVotePage() {
     setSelectedAnswerId(answerId);
     setPhase("voted");
     gameController.send({
-      destination: `/app/game/${gameController.getGame()?.oneTimeGameCode}/vote`,
+      destination: `/app/game/${gameCode}/vote`,
       body: { playerId, questionId: question.id, answerId },
     });
   }

@@ -60,7 +60,7 @@ public class GameSocketController {
 
     @MessageMapping("/game/{oneTimeGameCode}/start")
     public void start(@DestinationVariable String oneTimeGameCode) {
-    	log.info("START received for gameCode={}", oneTimeGameCode);
+    	log.info("START received for oneTimeGameCode={}", oneTimeGameCode);
         sessionService.startGame(oneTimeGameCode);
     }
     
