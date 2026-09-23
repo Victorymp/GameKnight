@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { GameData, Player, Image } from "../../models/model";
 import { Screen, Header } from "../../components/ui/Screen";
 import { Card } from "../../components/ui/Card";
@@ -24,13 +24,13 @@ export default function GameLobby() {
   const gameCode = game?.gameCode;
 
   // 1. player controller subscription
-  useEffect(() => {
+  const subscribePlayers = useCallback(async () => {
     setPlayers(playerController.getPlayers());
     return playerController.subscribe(setPlayers);
   }, []);
 
   // 2. load the game by id — single source of truth for gameCode
-  useEffect(() => {
+  useEffect( () => {
     if (!gameId) return;
     let cancelled = false;
 
@@ -47,7 +47,7 @@ export default function GameLobby() {
   }, [gameId]);
 
   // 3. start the game — only once we have the CODE
-  useEffect(() => {
+  const startGamePostCode = async () => {
     if (!gameCode) return;
     let cancelled = false;
 
@@ -71,10 +71,10 @@ export default function GameLobby() {
     })();
 
     return () => { cancelled = true; };
-  }, [gameCode]);
+  };
 
   // 4. ONE websocket effect, keyed on the code
-  useEffect(() => {
+  const startSocket = async () => {
     if (!gameCode) return;
     let off: (() => void) | undefined;
     let cancelled = false;
@@ -82,6 +82,7 @@ export default function GameLobby() {
     connectWebSocket().then(() => {
       if (cancelled) return;
       const oneTimeGameCode = gameController.getGame()?.oneTimeGameCode;
+      console.log(`One time game code: ${oneTimeGameCode}`);
       if (!oneTimeGameCode) return;
 
       sendGameSocketMessage(`/app/game/${oneTimeGameCode}/reset`, {});
@@ -92,17 +93,24 @@ export default function GameLobby() {
             break;
           case "game:reset":
             playerController.clear();
-            // gameController.reset();
             break;
         }
       });
     });
 
     return () => { cancelled = true; off?.(); playerController.clear(); };
-  }, [gameCode]);
+  };
 
-  function beginGame() {
+  async function beginGame() {
     if (!game) { setError("No game loaded."); return; }
+    // Part 1
+    await subscribePlayers();
+    // Part 2
+    // loadGame();
+    // Part 3
+    await startGamePostCode();
+    // Part 4
+    await startSocket();
     setError(undefined);
     navigate(`/game/${gameController.getGame()?.oneTimeGameCode}/host`);
   }
