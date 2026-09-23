@@ -144,7 +144,7 @@ function AlbumTile({ album }: AlbumTileProps) {
             {album.description}
           </p>
         )}
-
+        <p>Tags</p>
         {tagsList.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {tagsList.slice(0, 3).map((tag) => (
@@ -163,7 +163,7 @@ function AlbumTile({ album }: AlbumTileProps) {
           </div>
         )}
 
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-12 mt-2">
           <Button
             onClick={() => navigate(`/albums/${album.id}/edit`)}
             className="flex-1 text-sm"

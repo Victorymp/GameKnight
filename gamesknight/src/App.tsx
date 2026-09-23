@@ -16,11 +16,12 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path='/game' element={<Game />} />
         <Route path='/discover' element={<AlbumList/>} />
-        <Route path='/game/make' element={<GameMake />} />
-        <Route path='/game/:gameId' element={<GameLobby/>}/>
-        <Route path='/game/:gameCode/host' element={<GamePlay/>} />
+
+        <Route path='/game' element={<Game />} />
+        <Route path='/game/make' element={<GameMake />} /> {/* Create a new game */}
+        <Route path='/game/:gameId' element={<GameLobby/>}/> {/* Starting point for a game */}
+        <Route path='/game/:gameCode/host' element={<GamePlay/>} /> {/* Host play a game */}
         <Route path="/albums" element={<AlbumList />} />  {/* list all albums, links to /new */}
         <Route path="/albums/new" element={<AlbumMake />} />
         <Route path="/albums/:id/edit" element={<AlbumEdit />} />
